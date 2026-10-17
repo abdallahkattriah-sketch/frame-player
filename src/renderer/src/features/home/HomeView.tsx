@@ -36,8 +36,15 @@ export function HomeView() {
       )}
       <h1 className="text-2xl font-semibold tracking-tight">Your library is empty</h1>
       <p className="max-w-sm text-sm text-muted">
-        Library folders and playback arrive in upcoming milestones.
+        Library folders arrive in an upcoming milestone. You can already play a single file.
       </p>
+      <button
+        type="button"
+        onClick={() => void window.frame.player.openFileDialog()}
+        className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-bg hover:brightness-110"
+      >
+        Open video…
+      </button>
       <p className="text-xs text-subtle" data-testid="app-info">
         {error
           ? `Bridge error: ${error}`

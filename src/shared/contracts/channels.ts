@@ -9,6 +9,11 @@ export const IpcChannel = {
   CredentialsStatus: 'credentials:status',
   CredentialsSet: 'credentials:set',
   CredentialsDelete: 'credentials:delete',
+  PlayerOpenFileDialog: 'player:open-file-dialog',
+  PlayerGetState: 'player:get-state',
+  PlayerCommand: 'player:command',
+  /** Main → renderer push. */
+  PlayerStateChanged: 'player:state-changed',
 } as const
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel]

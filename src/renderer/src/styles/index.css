@@ -36,6 +36,11 @@ body {
   user-select: none;
 }
 
+/* Player overlay window: let mpv's video show through. */
+html[data-surface='overlay'] body {
+  background: transparent;
+}
+
 :focus-visible {
   outline: 2px solid var(--frame-accent);
   outline-offset: 2px;

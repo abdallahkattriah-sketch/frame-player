@@ -1,0 +1,9 @@
+{
+  "source": "https://github.com/shinchiro/mpv-winbuild-cmake",
+  "license": "GPL-2.0-or-later (mpv and bundled FFmpeg build); see resources/mpv after download",
+  "tag": "20261003",
+  "asset": "mpv-x86_64-20261003-git-3186d369f9.7z",
+  "url": "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20261003/mpv-x86_64-20261003-git-3186d369f9.7z",
+  "sha256": "0f616bde3216dd14a0e460892f346406ad976163c47fb49a8e2ea079cca73699",
+  "size": 33927305
+}

@@ -6,6 +6,8 @@
   "private": true,
   "main": "./out/main/index.js",
   "scripts": {
+    "setup:mpv": "node scripts/setup/fetch-mpv.mjs",
+    "setup:test-media": "node scripts/setup/make-test-media.mjs",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
@@ -21,6 +23,7 @@
     "test:e2e": "electron-vite build && playwright test"
   },
   "dependencies": {
+    "koffi": "3.3.2",
     "zod": "4.6.7"
   },
   "devDependencies": {

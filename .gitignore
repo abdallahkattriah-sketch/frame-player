@@ -14,3 +14,4 @@ resources/mpv/
 .DS_Store
 Thumbs.db
 *.tsbuildinfo
+tests/fixtures/media/
