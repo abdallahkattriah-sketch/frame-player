@@ -1,5 +1,12 @@
 import { mkdirSync } from 'node:fs'
-import { safeStorage } from 'electron'
+import { dirname } from 'node:path'
+import { app, safeStorage } from 'electron'
+import type { CredentialId } from '@shared/contracts/credentials'
+import type { ProviderStatus } from '@shared/contracts/subtitles'
+import { SubtitleService } from '../subtitles/subtitle-service'
+import { OpenSubtitlesProvider } from '../subtitles/opensubtitles/opensubtitles-provider'
+import { SubSourceProvider } from '../subtitles/subsource/subsource-provider'
+import { createTargetResolver } from '../subtitles/target-resolver'
 import type { StartupStatus } from '@shared/contracts/ipc'
 import type { ScanProgress } from '@shared/contracts/library'
 import type { MetadataStatus } from '@shared/contracts/metadata'
@@ -32,6 +39,7 @@ export interface AppServices {
   metadata: MetadataService
   tmdb: TmdbClient
   artwork: ArtworkCache
+  subtitles: SubtitleService
   startupStatus: StartupStatus
 }
 
@@ -40,18 +48,32 @@ export interface BootstrapEvents {
   /** Library contents or watch state changed; views should refresh. */
   onLibraryChanged: () => void
   onMetadataStatus: (status: MetadataStatus) => void
+  onSubtitleStatus?: (statuses: ProviderStatus[]) => void
 }
 
-/** Development/test-only endpoints (e.g. a local mock TMDB). Ignored in packaged builds. */
+/** Development/test-only endpoints (e.g. local mock servers). Ignored in packaged builds. */
 export interface DevOverrides {
   tmdbApiBase?: string
   tmdbImageBase?: string
+  openSubtitlesOrigin?: string
+  subSourceOrigin?: string
+}
+
+/** The player is created after services; these calls are resolved late. */
+export interface PlayerBridge {
+  currentPath: () => string | null
+  addSubtitle: (
+    videoPath: string,
+    subtitlePath: string,
+    language: string | null,
+  ) => Promise<boolean>
 }
 
 export function bootstrapServices(
   paths: AppPaths,
   events: BootstrapEvents,
   overrides: DevOverrides = {},
+  player: PlayerBridge = { currentPath: () => null, addSubtitle: async () => false },
 ): AppServices {
   mkdirSync(paths.userData, { recursive: true })
 
@@ -124,6 +146,46 @@ export function bootstrapServices(
       .catch(() => undefined)
   }
 
+  const secret = (id: CredentialId) => () => {
+    try {
+      return credentials.get(id)
+    } catch {
+      return undefined
+    }
+  }
+  const subtitleSettings = () => settings.get().subtitles
+  const subtitles = new SubtitleService({
+    providers: [
+      new OpenSubtitlesProvider({
+        http,
+        getApiKey: secret('opensubtitles.apiKey'),
+        getUsername: secret('opensubtitles.username'),
+        getPassword: secret('opensubtitles.password'),
+        userAgent: `Frame v${app.getVersion()}`,
+        baseOrigin: overrides.openSubtitlesOrigin,
+      }),
+      new SubSourceProvider({
+        http,
+        getApiKey: secret('subsource.apiKey'),
+        baseOrigin: overrides.subSourceOrigin,
+      }),
+    ],
+    isOnline: () => settings.get().privacy.onlineSubtitlesEnabled,
+    isProviderEnabled: (id) => subtitleSettings().providers[id],
+    allowFileHash: () => subtitleSettings().allowFileHash,
+    saveDirFor: (videoPath) => {
+      const s = subtitleSettings()
+      return s.saveLocation === 'folder' && s.folder ? s.folder : dirname(videoPath)
+    },
+    resolveTarget: createTargetResolver({
+      library: libraryQuery,
+      metadata,
+      currentPath: player.currentPath,
+    }),
+    addToPlayer: player.addSubtitle,
+    onStatus: events.onSubtitleStatus,
+  })
+
   return {
     db,
     settings,
@@ -135,6 +197,7 @@ export function bootstrapServices(
     metadata,
     tmdb,
     artwork,
+    subtitles,
     startupStatus: recoveredFrom
       ? { databaseRecovery: { backupPath: recoveredFrom.backupPath } }
       : {},

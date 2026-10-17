@@ -4,6 +4,7 @@ import type { FrameApi } from '@shared/contracts/ipc'
 import type { PlayerState } from '@shared/contracts/player'
 import type { ScanProgress } from '@shared/contracts/library'
 import type { MetadataStatus } from '@shared/contracts/metadata'
+import type { ProviderStatus } from '@shared/contracts/subtitles'
 
 const api: FrameApi = {
   app: {
@@ -72,6 +73,17 @@ const api: FrameApi = {
     reidentify: (target) => ipcRenderer.invoke(IpcChannel.MetadataReidentify, target),
     item: (target) => ipcRenderer.invoke(IpcChannel.MetadataItem, target),
     onStatus: (listener) => subscribe<MetadataStatus>(IpcChannel.MetadataStatusChanged, listener),
+  },
+  subtitles: {
+    providers: () => ipcRenderer.invoke(IpcChannel.SubtitleProviders),
+    validateProvider: (id) => ipcRenderer.invoke(IpcChannel.SubtitleValidateProvider, id),
+    search: (search) => ipcRenderer.invoke(IpcChannel.SubtitleSearch, search),
+    download: (download) => ipcRenderer.invoke(IpcChannel.SubtitleDownload, download),
+    cancelDownload: () => ipcRenderer.invoke(IpcChannel.SubtitleCancelDownload),
+    loadFile: () => ipcRenderer.invoke(IpcChannel.SubtitleLoadFile),
+    chooseFolder: () => ipcRenderer.invoke(IpcChannel.SubtitleChooseFolder),
+    onProviders: (listener) =>
+      subscribe<ProviderStatus[]>(IpcChannel.SubtitleProvidersChanged, listener),
   },
 }
 

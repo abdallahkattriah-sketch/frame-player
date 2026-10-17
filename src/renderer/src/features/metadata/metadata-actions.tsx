@@ -14,11 +14,13 @@ export interface MatchRequest {
 export interface MetadataActions {
   openMatch: (request: MatchRequest) => void
   openDetails: (item: LibraryItem) => void
+  openSubtitles: (item: LibraryItem) => void
 }
 
 export const MetadataActionsContext = createContext<MetadataActions>({
   openMatch: () => undefined,
   openDetails: () => undefined,
+  openSubtitles: () => undefined,
 })
 
 export function useMetadataActions(): MetadataActions {

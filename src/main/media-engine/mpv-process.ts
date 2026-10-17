@@ -39,6 +39,8 @@ export function buildMpvArgs(options: MpvProcessOptions, pipePath: string): stri
     `--hwdec=${options.hwdec ?? 'auto-safe'}`,
     `--volume=${options.volume ?? 100}`,
     '--screenshot-format=png',
+    // Frame discovers and selects subtitle files itself (language preferences, Subs folders).
+    '--sub-auto=no',
     '--terminal=no',
     '--msg-level=all=warn',
     '--load-scripts=no',

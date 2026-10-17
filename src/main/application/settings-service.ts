@@ -25,15 +25,24 @@ export class SettingsService {
     return result
   }
 
-  update(patch: SettingsPatch): AppSettings {
+  /**
+   * Main-process callers may set any field; renderer patches are narrowed by the IPC schema
+   * (settingsPatchSchema) before they get here.
+   */
+  update(patch: SettingsPatch | { [S in SettingsSection]?: Partial<AppSettings[S]> }): AppSettings {
     const current = this.get()
     const next = appSettingsSchema.parse(
       Object.fromEntries(
-        settingsSections.map((section) => [section, { ...current[section], ...patch[section] }]),
+        settingsSections.map((section) => [
+          section,
+          { ...current[section], ...(patch as Record<string, object | undefined>)[section] },
+        ]),
       ),
     )
     for (const section of settingsSections) {
-      if (patch[section]) this.repository.upsert(section, JSON.stringify(next[section]))
+      if ((patch as Record<string, unknown>)[section]) {
+        this.repository.upsert(section, JSON.stringify(next[section]))
+      }
     }
     return next
   }

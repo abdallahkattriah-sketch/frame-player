@@ -43,6 +43,12 @@ export interface PlayerControllerOptions {
     audioTrackId: number | null
     subtitleTrackId: number | null
   } | null
+  /** External subtitle files to add for a file that just loaded, and which one to show. */
+  subtitlesFor?: (
+    path: string,
+  ) => Promise<{ path: string; language: string | null; select: boolean }[]>
+  /** Preferred subtitle languages for mpv's choice among embedded tracks (e.g. "ar,en"). */
+  subtitleLanguages?: () => string
 }
 
 const STATE_FLUSH_MS = 100
@@ -93,6 +99,8 @@ export class PlayerController {
         eofReached: false,
         shuffle: false,
       })
+      const slang = this.options.subtitleLanguages?.()
+      if (slang) await mpv.client.setProperty('slang', slang)
       // Paths travel as JSON strings over IPC: no quoting or shell involved.
       await mpv.client.command('loadfile', first, 'replace')
       for (const file of rest) await mpv.client.command('loadfile', file, 'append')
@@ -135,6 +143,28 @@ export class PlayerController {
     const path = join(dir, `${name} ${seconds}s ${stamp}.png`)
     await this.mpv.client.command('screenshot-to-file', path, 'subtitles')
     return { path }
+  }
+
+  /**
+   * Adds a subtitle file to the player and shows it, if `videoPath` is what is playing.
+   * Returns false (and does nothing) otherwise.
+   */
+  async addSubtitle(
+    videoPath: string,
+    subtitlePath: string,
+    language: string | null,
+  ): Promise<boolean> {
+    const mpv = this.mpv
+    const current = this.state.path
+    if (!mpv?.running || !current || current.toLowerCase() !== videoPath.toLowerCase()) return false
+    await mpv.client.command(
+      'sub-add',
+      subtitlePath,
+      'select',
+      basename(subtitlePath),
+      language ?? '',
+    )
+    return true
   }
 
   /** Synchronous: safe to call from app 'will-quit'. Records the final state first. */
@@ -292,7 +322,7 @@ export class PlayerController {
   private onMpvEvent(event: MpvEvent) {
     if (event.event === 'file-loaded') {
       this.update({ ...this.state, status: 'ready', error: null })
-      void this.resumeCurrentFile()
+      void this.prepareLoadedFile()
     } else if (event.event === 'end-file' && event['reason'] === 'error') {
       const detail = typeof event['file_error'] === 'string' ? event['file_error'] : 'unknown error'
       this.update({
@@ -303,14 +333,44 @@ export class PlayerController {
     }
   }
 
-  /** Restores position and track choices remembered for the file that just loaded. */
-  private async resumeCurrentFile() {
+  /**
+   * For a file that just loaded: add its subtitle files, then restore the remembered position
+   * and track choices (which take precedence over the automatic subtitle choice).
+   */
+  private async prepareLoadedFile() {
     const mpv = this.mpv
-    if (!mpv || !this.options.resumeFor) return
+    if (!mpv) return
+    let path: unknown
     try {
       // Ask mpv directly: the 'path' property change may not have arrived yet.
-      const path = await mpv.client.getProperty('path')
-      if (typeof path !== 'string') return
+      path = await mpv.client.getProperty('path')
+    } catch {
+      return
+    }
+    if (typeof path !== 'string') return
+
+    if (this.options.subtitlesFor) {
+      try {
+        for (const sub of await this.options.subtitlesFor(path)) {
+          await mpv.client.command(
+            'sub-add',
+            sub.path,
+            sub.select ? 'select' : 'auto',
+            basename(sub.path),
+            sub.language ?? '',
+          )
+        }
+      } catch (error) {
+        console.warn(`player: could not add subtitle files: ${describe(error)}`)
+      }
+    }
+    await this.resumeFile(mpv, path)
+  }
+
+  /** Restores position and track choices remembered for the file that just loaded. */
+  private async resumeFile(mpv: MpvProcess, path: string) {
+    if (!this.options.resumeFor) return
+    try {
       const resume = this.options.resumeFor(path)
       if (!resume) return
       await mpv.client.command('seek', resume.position, 'absolute+exact')

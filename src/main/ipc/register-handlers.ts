@@ -20,6 +20,15 @@ import type { LibraryQueryRepository } from '../database/repositories/library-qu
 import type { HistoryRepository } from '../database/repositories/history-repository'
 import type { MetadataService } from '../metadata/metadata-service'
 import { matchTargetSchema, metadataSearchSchema } from '@shared/contracts/metadata'
+import {
+  subtitleDownloadSchema,
+  subtitleProviderIds,
+  subtitleSearchSchema,
+} from '@shared/contracts/subtitles'
+import type { SubtitleService } from '../subtitles/subtitle-service'
+import { SUBTITLE_EXTENSIONS } from '../subtitles/subtitle-content'
+import { parseSubtitleName } from '../subtitles/local-discovery'
+import { basename, dirname, extname } from 'node:path'
 import { handle } from './handle'
 
 export interface IpcDependencies {
@@ -31,6 +40,7 @@ export interface IpcDependencies {
   libraryQuery: LibraryQueryRepository
   historyRepository: HistoryRepository
   metadata: MetadataService
+  subtitles: SubtitleService
   onLibraryChanged: () => void
 }
 
@@ -202,6 +212,51 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
   handle(IpcChannel.MetadataItem, z.tuple([matchTargetSchema]), ([target]) =>
     deps.metadata.itemMetadata(target),
   )
+
+  handle(IpcChannel.SubtitleProviders, noArgs, () => deps.subtitles.statuses())
+  handle(IpcChannel.SubtitleValidateProvider, z.tuple([z.enum(subtitleProviderIds)]), ([id]) =>
+    deps.subtitles.validate(id),
+  )
+  handle(IpcChannel.SubtitleSearch, z.tuple([subtitleSearchSchema]), ([search]) =>
+    deps.subtitles.searchSubtitles(search),
+  )
+  handle(IpcChannel.SubtitleDownload, z.tuple([subtitleDownloadSchema]), ([download]) =>
+    deps.subtitles.downloadSubtitle(download),
+  )
+  handle(IpcChannel.SubtitleCancelDownload, noArgs, () => deps.subtitles.cancelDownload())
+  handle(IpcChannel.SubtitleLoadFile, noArgs, async () => {
+    const video = deps.player.getState().path
+    if (!video) return { loaded: false, error: 'Nothing is playing.' }
+    const parent = BrowserWindow.getFocusedWindow()
+    const options: Electron.OpenDialogOptions = {
+      title: 'Load subtitle file',
+      defaultPath: dirname(video),
+      properties: ['openFile'],
+      filters: [{ name: 'Subtitles', extensions: [...SUBTITLE_EXTENSIONS] }],
+    }
+    const result = parent
+      ? await dialog.showOpenDialog(parent, options)
+      : await dialog.showOpenDialog(options)
+    const path = result.filePaths[0]
+    if (result.canceled || !path) return { loaded: false }
+    const language =
+      parseSubtitleName(basename(video, extname(video)), basename(path))?.language ?? null
+    return { loaded: await deps.player.addSubtitle(video, path, language) }
+  })
+  handle(IpcChannel.SubtitleChooseFolder, noArgs, async () => {
+    const parent = BrowserWindow.getFocusedWindow()
+    const options: Electron.OpenDialogOptions = {
+      title: 'Folder for downloaded subtitles',
+      properties: ['openDirectory', 'createDirectory'],
+    }
+    const result = parent
+      ? await dialog.showOpenDialog(parent, options)
+      : await dialog.showOpenDialog(options)
+    const folder = result.filePaths[0]
+    if (result.canceled || !folder) return null
+    deps.settings.update({ subtitles: { folder, saveLocation: 'folder' } })
+    return folder
+  })
 
   handle(IpcChannel.HistoryRemove, z.tuple([itemRefSchema]), ([ref]) => {
     const item = resolveItem(deps, ref)

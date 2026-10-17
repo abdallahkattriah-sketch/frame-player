@@ -55,17 +55,15 @@ test('identifies the library with TMDB, shows artwork and details, and supports 
     await addFolder(app, page)
 
     // A wrong token is reported clearly and stored nowhere in plain text.
-    const tokenField = page
-      .getByRole('textbox', { name: 'TMDB token' })
-      .or(page.getByLabel('TMDB token'))
+    const tokenField = page.getByLabel('TMDB token', { exact: true })
     await tokenField.fill('eyJ.wrong-token')
-    await page.getByRole('button', { name: 'Save', exact: true }).click()
+    await page.getByRole('button', { name: 'Save TMDB token' }).click()
     await expect(page.getByTestId('tmdb-test-result')).toHaveText(
       'TMDB rejected the token. Check it in Settings.',
     )
 
     await tokenField.fill(GOOD_TOKEN)
-    await page.getByRole('button', { name: 'Save', exact: true }).click()
+    await page.getByRole('button', { name: 'Save TMDB token' }).click()
     await expect(page.getByTestId('tmdb-test-result')).toHaveText('Connected to TMDB.')
     await expect(page.getByTestId('tmdb-token-status')).toHaveText('Saved (encrypted)')
     expect(readFileSync(join(userDataDir, 'credentials.json'), 'utf8')).not.toContain(GOOD_TOKEN)
@@ -127,8 +125,8 @@ test('turning off online lookups stops all TMDB requests and the library keeps w
     const page = await app.firstWindow()
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByLabel(/Look up information online/).uncheck()
-    await page.getByLabel('TMDB token').fill(GOOD_TOKEN)
-    await page.getByRole('button', { name: 'Save', exact: true }).click()
+    await page.getByLabel('TMDB token', { exact: true }).fill(GOOD_TOKEN)
+    await page.getByRole('button', { name: 'Save TMDB token' }).click()
     await addFolder(app, page)
 
     await page.getByRole('button', { name: 'Movies' }).click()

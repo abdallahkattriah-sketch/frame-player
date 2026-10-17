@@ -50,10 +50,27 @@ export const metadataSettingsSchema = z.object({
   autoIdentify: z.boolean(),
 })
 
+const languageCode = z.string().regex(/^[a-z]{2}(?:-[A-Z]{2})?$/)
+
+export const subtitleSettingsSchema = z.object({
+  /** In order of preference; the first available is selected automatically. */
+  preferredLanguages: z.array(languageCode).min(1).max(5),
+  hearingImpaired: z.enum(['include', 'exclude', 'only']),
+  /** Load subtitle files found next to the video. */
+  autoLoadLocal: z.boolean(),
+  /** Send a fingerprint of the video file to providers that match by hash. */
+  allowFileHash: z.boolean(),
+  saveLocation: z.enum(['next-to-video', 'folder']),
+  /** Set only through the folder picker (not through settings updates). */
+  folder: z.string().max(32_767).nullable(),
+  providers: z.object({ opensubtitles: z.boolean(), subsource: z.boolean() }),
+})
+
 export const appSettingsSchema = z.object({
   playback: playbackSettingsSchema,
   library: librarySettingsSchema,
   metadata: metadataSettingsSchema,
+  subtitles: subtitleSettingsSchema,
   ui: uiSettingsSchema,
   appearance: appearanceSettingsSchema,
   privacy: privacySettingsSchema,
@@ -74,6 +91,15 @@ export const defaultSettings: AppSettings = {
   },
   library: { videoExtensions: [...defaultVideoExtensions] },
   metadata: { language: 'en-US', autoIdentify: true },
+  subtitles: {
+    preferredLanguages: ['en'],
+    hearingImpaired: 'include',
+    autoLoadLocal: true,
+    allowFileHash: false,
+    saveLocation: 'next-to-video',
+    folder: null,
+    providers: { opensubtitles: true, subsource: true },
+  },
   ui: { viewPreferences: {} },
   appearance: { themeId: 'midnight-cinema' },
   privacy: { onlineMetadataEnabled: true, onlineSubtitlesEnabled: true },
@@ -86,6 +112,8 @@ export const settingsPatchSchema = z
     library: librarySettingsSchema.partial().strict().optional(),
     ui: uiSettingsSchema.partial().strict().optional(),
     metadata: metadataSettingsSchema.partial().strict().optional(),
+    // The folder is chosen with a native picker in the main process, never sent from the UI.
+    subtitles: subtitleSettingsSchema.omit({ folder: true }).partial().strict().optional(),
     appearance: appearanceSettingsSchema.partial().strict().optional(),
     privacy: privacySettingsSchema.partial().strict().optional(),
   })

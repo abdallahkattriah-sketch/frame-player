@@ -13,6 +13,7 @@ import {
   VolumeX,
 } from 'lucide-react'
 import { defaultSettings } from '@shared/settings/schema'
+import { SubtitleSearchDialog } from '@renderer/features/subtitles/SubtitleSearchDialog'
 import { formatTime } from './format-time'
 import { InfoPanel } from './InfoPanel'
 import { AudioSubtitleMenu, SpeedMenu, VideoMenu } from './menus'
@@ -56,6 +57,7 @@ export function PlayerOverlay() {
   const [showInfo, setShowInfo] = useState(false)
   const [showPlaylist, setShowPlaylist] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [showSubtitleSearch, setShowSubtitleSearch] = useState(false)
   const [seekStep, setSeekStep] = useState(defaultSettings.playback.seekStepSeconds)
   const toastTimer = useRef<number | undefined>(undefined)
 
@@ -157,6 +159,14 @@ export function PlayerOverlay() {
 
       {showInfo && <InfoPanel state={state} />}
       {showPlaylist && <PlaylistPanel state={state} onClose={() => setShowPlaylist(false)} />}
+      {showSubtitleSearch && state.path && (
+        <SubtitleSearchDialog
+          target={{ current: true }}
+          label={state.title ?? state.path}
+          isEpisode={/s\d{1,2}[ ._-]?e\d{1,4}|\b\d{1,2}x\d{2,4}\b/i.test(state.path)}
+          onClose={() => setShowSubtitleSearch(false)}
+        />
+      )}
 
       {toast && (
         <div
@@ -238,7 +248,19 @@ export function PlayerOverlay() {
                 }
                 className="mr-1 w-24 accent-[var(--frame-accent)]"
               />
-              <AudioSubtitleMenu state={state} />
+              <AudioSubtitleMenu
+                state={state}
+                onSearchOnline={() => setShowSubtitleSearch(true)}
+                onLoadFile={() => {
+                  window.frame.subtitles
+                    .loadFile()
+                    .then((r) => {
+                      if (r.error) notify(r.error)
+                      else if (r.loaded) notify('Subtitle loaded.')
+                    })
+                    .catch(() => undefined)
+                }}
+              />
               <SpeedMenu speed={state.speed} />
               <VideoMenu state={state} />
               <IconButton

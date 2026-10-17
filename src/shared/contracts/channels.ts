@@ -37,11 +37,19 @@ export const IpcChannel = {
   MetadataReject: 'metadata:reject',
   MetadataReidentify: 'metadata:reidentify',
   MetadataItem: 'metadata:item',
+  SubtitleProviders: 'subtitles:providers',
+  SubtitleValidateProvider: 'subtitles:validate-provider',
+  SubtitleSearch: 'subtitles:search',
+  SubtitleDownload: 'subtitles:download',
+  SubtitleCancelDownload: 'subtitles:cancel-download',
+  SubtitleLoadFile: 'subtitles:load-file',
+  SubtitleChooseFolder: 'subtitles:choose-folder',
   /** Main → renderer pushes. */
   PlayerStateChanged: 'player:state-changed',
   LibraryScanProgress: 'library:scan-progress',
   LibraryChanged: 'library:changed',
   MetadataStatusChanged: 'metadata:status-changed',
+  SubtitleProvidersChanged: 'subtitles:providers-changed',
 } as const
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel]

@@ -39,6 +39,9 @@ export interface HttpClientOptions {
 export interface RequestOptions {
   headers?: Record<string, string>
   signal?: AbortSignal
+  method?: 'GET' | 'POST' | 'DELETE'
+  /** JSON request body (POST). */
+  json?: unknown
 }
 
 const RETRYABLE: ReadonlySet<HttpErrorKind> = new Set([
@@ -150,7 +153,12 @@ export class HttpClient {
       } catch (error) {
         const e =
           error instanceof HttpError ? error : new HttpError('network', describeNetworkError(url))
-        if (!RETRYABLE.has(e.kind) || attempt >= maxRetries || request.signal?.aborted) throw e
+        // A POST may have taken effect (e.g. counted a download) unless it was rate-limited.
+        const retryable =
+          request.method === 'POST' || request.method === 'DELETE'
+            ? e.kind === 'rate-limited'
+            : RETRYABLE.has(e.kind)
+        if (!retryable || attempt >= maxRetries || request.signal?.aborted) throw e
         const wait = e.retryAfterMs ?? backoff * 2 ** attempt
         if (wait > MAX_RETRY_AFTER_MS) throw e
         attempt++
@@ -164,8 +172,15 @@ export class HttpClient {
     const signal = request.signal ? AbortSignal.any([request.signal, timeout]) : timeout
     let response: Response
     try {
+      const hasBody = request.json !== undefined
       response = await this.fetchImpl(url, {
-        headers: { Accept: accept, ...request.headers },
+        method: request.method ?? 'GET',
+        headers: {
+          Accept: accept,
+          ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
+          ...request.headers,
+        },
+        body: hasBody ? JSON.stringify(request.json) : undefined,
         signal,
         redirect: 'follow',
       })

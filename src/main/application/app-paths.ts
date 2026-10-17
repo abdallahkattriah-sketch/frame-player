@@ -11,11 +11,18 @@ export interface AppPaths {
 }
 
 /** Endpoints a development build may redirect (tests use a local mock TMDB). */
-export function devOverrides(): { tmdbApiBase?: string; tmdbImageBase?: string } {
+export function devOverrides(): {
+  tmdbApiBase?: string
+  tmdbImageBase?: string
+  openSubtitlesOrigin?: string
+  subSourceOrigin?: string
+} {
   if (app.isPackaged) return {}
   return {
     tmdbApiBase: process.env['FRAME_TMDB_API_BASE'] || undefined,
     tmdbImageBase: process.env['FRAME_TMDB_IMAGE_BASE'] || undefined,
+    openSubtitlesOrigin: process.env['FRAME_OPENSUBTITLES_ORIGIN'] || undefined,
+    subSourceOrigin: process.env['FRAME_SUBSOURCE_ORIGIN'] || undefined,
   }
 }
 

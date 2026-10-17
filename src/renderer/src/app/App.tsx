@@ -9,6 +9,7 @@ import { ShowsView } from '@renderer/features/library/ShowsView'
 import { useDebounced } from '@renderer/features/library/use-library'
 import { DetailsPanel } from '@renderer/features/metadata/DetailsPanel'
 import { MatchDialog } from '@renderer/features/metadata/MatchDialog'
+import { SubtitleSearchDialog } from '@renderer/features/subtitles/SubtitleSearchDialog'
 import {
   MetadataActionsContext,
   type MatchRequest,
@@ -20,10 +21,15 @@ export function App() {
   const [search, setSearch] = useState('')
   const [matchRequest, setMatchRequest] = useState<MatchRequest | null>(null)
   const [detailsItem, setDetailsItem] = useState<LibraryItem | null>(null)
+  const [subtitleItem, setSubtitleItem] = useState<LibraryItem | null>(null)
   const query = useDebounced(search.trim(), 200)
 
   const metadataActions = useMemo<MetadataActions>(
-    () => ({ openMatch: setMatchRequest, openDetails: setDetailsItem }),
+    () => ({
+      openMatch: setMatchRequest,
+      openDetails: setDetailsItem,
+      openSubtitles: setSubtitleItem,
+    }),
     [],
   )
 
@@ -70,6 +76,15 @@ export function App() {
       >
         {content}
       </AppShell>
+      {subtitleItem?.fileId != null && (
+        <SubtitleSearchDialog
+          key={subtitleItem.fileId}
+          target={{ fileId: subtitleItem.fileId }}
+          label={subtitleItem.fileName}
+          isEpisode={subtitleItem.kind === 'episode'}
+          onClose={() => setSubtitleItem(null)}
+        />
+      )}
       {matchRequest && (
         <MatchDialog
           key={JSON.stringify(matchRequest.target)}

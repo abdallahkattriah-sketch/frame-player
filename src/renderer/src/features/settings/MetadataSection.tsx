@@ -143,6 +143,7 @@ export function MetadataSection() {
           />
           <button
             type="submit"
+            aria-label="Save TMDB token"
             disabled={!token.trim() || busy}
             className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-bg hover:brightness-110 disabled:opacity-40"
           >

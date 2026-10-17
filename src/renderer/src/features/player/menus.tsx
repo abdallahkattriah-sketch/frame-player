@@ -75,7 +75,15 @@ function TrackOptions({
   )
 }
 
-export function AudioSubtitleMenu({ state }: { state: PlayerState }) {
+export function AudioSubtitleMenu({
+  state,
+  onSearchOnline,
+  onLoadFile,
+}: {
+  state: PlayerState
+  onSearchOnline?: () => void
+  onLoadFile?: () => void
+}) {
   const audio = state.tracks.filter((t) => t.type === 'audio')
   const subs = state.tracks.filter((t) => t.type === 'sub')
   return (
@@ -110,6 +118,28 @@ export function AudioSubtitleMenu({ state }: { state: PlayerState }) {
             seconds={state.subtitleDelay}
             onChange={(seconds) => sendCommand({ type: 'set-subtitle-delay', seconds })}
           />
+          {(onSearchOnline ?? onLoadFile) && (
+            <div className="mt-1 flex gap-1 px-1">
+              {onSearchOnline && (
+                <button
+                  type="button"
+                  onClick={onSearchOnline}
+                  className="flex-1 rounded-md border border-border px-2 py-1.5 hover:bg-elevated"
+                >
+                  Search online…
+                </button>
+              )}
+              {onLoadFile && (
+                <button
+                  type="button"
+                  onClick={onLoadFile}
+                  className="flex-1 rounded-md border border-border px-2 py-1.5 hover:bg-elevated"
+                >
+                  Load file…
+                </button>
+              )}
+            </div>
+          )}
         </MenuSection>
       </div>
     </Popover>

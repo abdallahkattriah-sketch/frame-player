@@ -54,6 +54,9 @@ export function ItemMenu({ item, open, onOpenChange, onPlay, className }: ItemMe
       action: () => metadataActions.openMatch(match),
     })
   }
+  if (item.fileId !== null && !item.missing) {
+    actions.push({ label: 'Find subtitles…', action: () => metadataActions.openSubtitles(item) })
+  }
   if (item.fileId !== null) {
     const id = item.fileId
     actions.push({

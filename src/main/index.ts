@@ -4,6 +4,7 @@ import { hardenSession, hardenWebContents, secureWebPreferences } from './securi
 import { registerIpcHandlers } from './ipc/register-handlers'
 import { configureUserDataDir, devOverrides, resolveAppPaths } from './application/app-paths'
 import { handleArtworkProtocol, registerArtworkScheme } from './metadata/artwork-protocol'
+import { chooseLocalSubtitle, discoverLocalSubtitles } from './subtitles/local-discovery'
 import { bootstrapServices, type AppServices } from './application/bootstrap'
 import { PlayerController } from './application/player-controller'
 import { resolveMpvPath } from './media-engine/mpv-locator'
@@ -84,8 +85,14 @@ if (!app.requestSingleInstanceLock()) {
           },
           onLibraryChanged: () => notifyLibraryChanged(),
           onMetadataStatus: (status) => broadcast(IpcChannel.MetadataStatusChanged, status),
+          onSubtitleStatus: (statuses) => broadcast(IpcChannel.SubtitleProvidersChanged, statuses),
         },
         devOverrides(),
+        {
+          currentPath: () => player?.getState().path ?? null,
+          addSubtitle: (video, sub, language) =>
+            player?.addSubtitle(video, sub, language) ?? Promise.resolve(false),
+        },
       )
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -118,6 +125,15 @@ if (!app.requestSingleInstanceLock()) {
       onStateChange: (state) => services?.history.onPlayerState(state),
       onSessionEnded: (last) => services?.history.onSessionEnded(last),
       resumeFor: (path) => services?.history.resumeFor(path) ?? null,
+      subtitleLanguages: () =>
+        services?.settings.get().subtitles.preferredLanguages.join(',') ?? '',
+      subtitlesFor: async (path) => {
+        const prefs = services?.settings.get().subtitles
+        if (!prefs?.autoLoadLocal) return []
+        const found = await discoverLocalSubtitles(path)
+        const chosen = chooseLocalSubtitle(found, prefs)
+        return found.map((s) => ({ path: s.path, language: s.language, select: s === chosen }))
+      },
     })
 
     registerIpcHandlers({ ...services, player, onLibraryChanged: notifyLibraryChanged })
@@ -157,7 +173,11 @@ if (!app.requestSingleInstanceLock()) {
   app.on('before-quit', (event) => {
     if (backgroundWorkStopped || !services) return
     event.preventDefault()
-    const stop = Promise.all([services.library.dispose(), services.metadata.dispose()])
+    const stop = Promise.all([
+      services.library.dispose(),
+      services.metadata.dispose(),
+      services.subtitles.dispose(),
+    ])
     const timeout = new Promise((r) => setTimeout(r, 3000))
     void Promise.race([stop, timeout]).finally(() => {
       backgroundWorkStopped = true

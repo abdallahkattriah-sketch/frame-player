@@ -22,6 +22,14 @@ import type {
   MetadataStatus,
   TokenTestResult,
 } from './metadata'
+import type {
+  ProviderStatus,
+  SubtitleDownload,
+  SubtitleDownloadResult,
+  SubtitleProviderId,
+  SubtitleSearch,
+  SubtitleSearchResponse,
+} from './subtitles'
 
 export { IpcChannel, type IpcChannelName } from './channels'
 
@@ -103,5 +111,17 @@ export interface FrameApi {
     reidentify: (target: MatchTarget) => Promise<void>
     item: (target: MatchTarget) => Promise<ItemMetadata>
     onStatus: (listener: (status: MetadataStatus) => void) => () => void
+  }
+  subtitles: {
+    providers: () => Promise<ProviderStatus[]>
+    validateProvider: (id: SubtitleProviderId) => Promise<ProviderStatus[]>
+    search: (search: SubtitleSearch) => Promise<SubtitleSearchResponse>
+    download: (download: SubtitleDownload) => Promise<SubtitleDownloadResult>
+    cancelDownload: () => Promise<void>
+    /** Native file picker; adds the chosen subtitle file to the current video. */
+    loadFile: () => Promise<{ loaded: boolean; error?: string }>
+    /** Native folder picker for where downloads are saved; null if cancelled. */
+    chooseFolder: () => Promise<string | null>
+    onProviders: (listener: (statuses: ProviderStatus[]) => void) => () => void
   }
 }

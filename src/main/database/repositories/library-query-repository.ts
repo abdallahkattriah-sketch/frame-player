@@ -263,6 +263,41 @@ export class LibraryQueryRepository {
     ).map((row) => row.r)
   }
 
+  /** Path and parsed name evidence for a library file. */
+  getFileDetails(id: number):
+    | {
+        path: string
+        title: string | null
+        year: number | null
+        kind: string
+        season: number | null
+        episode: number | null
+      }
+    | undefined {
+    return this.db
+      .prepare(
+        `SELECT path, parsed_title AS title, parsed_year AS year, parsed_kind AS kind,
+                parsed_season AS season, parsed_episode AS episode
+         FROM media_files WHERE id = ?`,
+      )
+      .get(id) as
+      | {
+          path: string
+          title: string | null
+          year: number | null
+          kind: string
+          season: number | null
+          episode: number | null
+        }
+      | undefined
+  }
+
+  findFileIdByPathKey(pathKey: string): number | undefined {
+    const row = this.db.prepare('SELECT id FROM media_files WHERE path_key = ?').get(pathKey) as
+      { id: number } | undefined
+    return row?.id
+  }
+
   /** What metadata matching needs to know about a file. */
   getFileForMatch(id: number):
     | {
