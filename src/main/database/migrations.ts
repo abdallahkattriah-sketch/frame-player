@@ -110,6 +110,74 @@ export const migrations: readonly Migration[] = [
       CREATE INDEX playback_history_recent ON playback_history (last_watched_at);
     `,
   },
+  {
+    version: 4,
+    name: 'tmdb-metadata',
+    sql: `
+      -- Descriptive TMDB data. TMDB's terms limit caching to 6 months, so rows are
+      -- refreshed or purged by fetched_at; match identity lives in media_matches.
+      CREATE TABLE metadata_items (
+        media_type        TEXT NOT NULL CHECK (media_type IN ('movie', 'tv')),
+        tmdb_id           INTEGER NOT NULL,
+        title             TEXT NOT NULL,
+        original_title    TEXT,
+        overview          TEXT,
+        release_date      TEXT,
+        year              INTEGER,
+        runtime_minutes   INTEGER,
+        poster_path       TEXT,
+        backdrop_path     TEXT,
+        vote_average      REAL,
+        vote_count        INTEGER,
+        original_language TEXT,
+        imdb_id           TEXT,
+        tvdb_id           INTEGER,
+        genres_json       TEXT NOT NULL DEFAULT '[]',
+        cast_json         TEXT NOT NULL DEFAULT '[]',
+        creators_json     TEXT NOT NULL DEFAULT '[]',
+        production_json   TEXT NOT NULL DEFAULT '[]',
+        fetched_at        TEXT NOT NULL,
+        PRIMARY KEY (media_type, tmdb_id)
+      ) STRICT;
+
+      CREATE TABLE metadata_episodes (
+        tmdb_id         INTEGER NOT NULL,
+        season          INTEGER NOT NULL,
+        episode         INTEGER NOT NULL,
+        name            TEXT,
+        overview        TEXT,
+        air_date        TEXT,
+        still_path      TEXT,
+        runtime_minutes INTEGER,
+        fetched_at      TEXT NOT NULL,
+        PRIMARY KEY (tmdb_id, season, episode)
+      ) STRICT;
+
+      -- Which TMDB entry a local file (movies) or show (episodes, by case-folded title) is.
+      CREATE TABLE media_matches (
+        target_type     TEXT NOT NULL CHECK (target_type IN ('file', 'show')),
+        target_key      TEXT NOT NULL,
+        status          TEXT NOT NULL CHECK (status IN ('matched', 'candidates', 'no-match', 'rejected', 'error')),
+        source          TEXT CHECK (source IN ('auto', 'user')),
+        confidence      REAL,
+        tmdb_media_type TEXT CHECK (tmdb_media_type IN ('movie', 'tv')),
+        tmdb_id         INTEGER,
+        candidates_json TEXT NOT NULL DEFAULT '[]',
+        error           TEXT,
+        updated_at      TEXT NOT NULL,
+        PRIMARY KEY (target_type, target_key),
+        CHECK (status <> 'matched' OR (tmdb_id IS NOT NULL AND tmdb_media_type IS NOT NULL))
+      ) STRICT;
+      CREATE INDEX media_matches_tmdb ON media_matches (tmdb_media_type, tmdb_id);
+
+      -- Cached search responses (also bounded by the 6-month rule; much shorter in practice).
+      CREATE TABLE http_cache (
+        cache_key  TEXT PRIMARY KEY NOT NULL,
+        body_json  TEXT NOT NULL,
+        fetched_at TEXT NOT NULL
+      ) STRICT;
+    `,
+  },
 ]
 
 export const latestSchemaVersion = migrations.reduce((max, m) => Math.max(max, m.version), 0)

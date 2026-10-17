@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { MatchStatus } from './metadata'
 
 export type MediaKind = 'movie' | 'episode' | 'unknown'
 
@@ -73,6 +74,7 @@ export const libraryViews = [
   'recently-watched',
   'favorites',
   'missing',
+  'unmatched',
 ] as const
 export type LibraryView = (typeof libraryViews)[number]
 
@@ -126,6 +128,15 @@ export interface LibraryItem {
   missing: boolean
   favorite: boolean
   progress: WatchProgress | null
+  /** TMDB identification state; null until identification has run. */
+  matchStatus: MatchStatus | null
+  /** From TMDB when matched (and cached); otherwise null. */
+  metadataTitle: string | null
+  metadataYear: number | null
+  posterPath: string | null
+  /** TMDB episode name and still, for matched episodes. */
+  episodeName: string | null
+  stillPath: string | null
 }
 
 export interface LibraryShow {
@@ -139,6 +150,9 @@ export interface LibraryShow {
   hasUnseasonedEpisodes: boolean
   watchedCount: number
   lastAddedAt: string
+  matchStatus: MatchStatus | null
+  metadataTitle: string | null
+  posterPath: string | null
 }
 
 /** Identifies an item for actions; the main process resolves it to a path itself. */
