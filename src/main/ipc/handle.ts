@@ -25,13 +25,37 @@ export function parseIpcArgs<S extends z.ZodType>(
   return parsed.data
 }
 
+export class UntrustedIpcSenderError extends Error {
+  constructor(channel: string) {
+    super(`Refused ${channel}: the request did not come from a Frame page`)
+    this.name = 'UntrustedIpcSenderError'
+  }
+}
+
+let isTrustedSender: (url: string) => boolean = () => false
+
+/** Which page URLs may call Frame's IPC (set once at startup; nothing is trusted before). */
+export function setIpcSenderPolicy(policy: (url: string) => boolean): void {
+  isTrustedSender = policy
+}
+
+/** The listener behind handle(): checks the sender, then the arguments, then runs. */
+export function ipcListener<S extends z.ZodType<unknown[]>, R>(
+  channel: IpcChannelName,
+  argsSchema: S,
+  handler: (args: z.infer<S>) => R,
+) {
+  return (event: { senderFrame?: { url: string } | null }, ...args: unknown[]): R => {
+    if (!isTrustedSender(event.senderFrame?.url ?? '')) throw new UntrustedIpcSenderError(channel)
+    return handler(parseIpcArgs(channel, argsSchema, args))
+  }
+}
+
 /** Registers a handler whose arguments (as a tuple) are validated before the handler runs. */
 export function handle<S extends z.ZodType<unknown[]>, R>(
   channel: IpcChannelName,
   argsSchema: S,
   handler: (args: z.infer<S>) => R,
 ): void {
-  ipcMain.handle(channel, (_event, ...args: unknown[]) =>
-    handler(parseIpcArgs(channel, argsSchema, args)),
-  )
+  ipcMain.handle(channel, ipcListener(channel, argsSchema, handler))
 }

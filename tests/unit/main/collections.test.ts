@@ -98,6 +98,13 @@ describe('collections', () => {
     expect(query.query({ view: 'all' })).toHaveLength(3)
   })
 
+  it('finds videos by the name of a collection they are in', () => {
+    const { collections, query, ids } = setup()
+    const c = collections.create('Oscar winners', 'collection')
+    collections.addFiles(c.id, [ids.Bravo])
+    expect(query.query({ view: 'all', search: 'oscar' }).map((i) => i.title)).toEqual(['Bravo'])
+  })
+
   it('drops membership when a library folder is removed', () => {
     const { collections, library, folderId, ids } = setup()
     const c = collections.create('Mix', 'playlist')

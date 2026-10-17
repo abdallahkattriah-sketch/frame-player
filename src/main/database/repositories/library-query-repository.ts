@@ -186,9 +186,11 @@ export class LibraryQueryRepository {
         `(m.parsed_title LIKE ? ESCAPE '\\' OR m.file_name LIKE ? ESCAPE '\\'
           OR m.parsed_episode_title LIKE ? ESCAPE '\\' OR COALESCE(m.relative_path, h.path) LIKE ? ESCAPE '\\'
           OR md.title LIKE ? ESCAPE '\\' OR md.original_title LIKE ? ESCAPE '\\'
-          OR me.name LIKE ? ESCAPE '\\')`,
+          OR me.name LIKE ? ESCAPE '\\'
+          OR m.id IN (SELECT sci.file_id FROM collection_items sci
+            JOIN collections sc ON sc.id = sci.collection_id WHERE sc.name LIKE ? ESCAPE '\\'))`,
       )
-      params.push(like, like, like, like, like, like, like)
+      params.push(like, like, like, like, like, like, like, like)
     }
 
     const sql = `SELECT ${itemColumns} FROM ${from} ${metadataJoins}

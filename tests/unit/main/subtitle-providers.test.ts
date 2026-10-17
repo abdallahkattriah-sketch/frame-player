@@ -439,6 +439,45 @@ describe('SubtitleService', () => {
     )
   })
 
+  it('reports missing keys per provider without crashing or sending requests', async () => {
+    const os = fakeFetch({})
+    const ss = fakeFetch({})
+    const svc = new SubtitleService({
+      providers: [
+        new OpenSubtitlesProvider({
+          http: os.http,
+          getApiKey: () => undefined,
+          getUsername: () => undefined,
+          getPassword: () => undefined,
+          userAgent: 'Frame v0.1.0',
+          baseOrigin: OS,
+        }),
+        new SubSourceProvider({ http: ss.http, getApiKey: () => undefined, baseOrigin: SS }),
+      ],
+      isOnline: () => true,
+      isProviderEnabled: () => true,
+      allowFileHash: () => false,
+      saveDirFor: () => tempDir(),
+      resolveTarget: () => ({
+        videoPath: 'C:\\Videos\\Film.mkv',
+        title: 'Film',
+        year: 2020,
+        kind: 'movie',
+        season: null,
+        episode: null,
+        tmdbId: null,
+        imdbId: null,
+      }),
+      addToPlayer: async () => false,
+    })
+    const response = await svc.searchSubtitles(search)
+    expect(response.results).toEqual([])
+    expect(response.errors.map((e) => e.provider).sort()).toEqual(['opensubtitles', 'subsource'])
+    expect(response.errors.every((e) => /key/i.test(e.message))).toBe(true)
+    expect(os.fn).not.toHaveBeenCalled()
+    expect(ss.fn).not.toHaveBeenCalled()
+  })
+
   it('makes no requests when online subtitles are turned off', async () => {
     const { svc, os, ss } = service({ online: false })
     const response = await svc.searchSubtitles(search)

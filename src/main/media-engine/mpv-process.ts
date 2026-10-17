@@ -70,6 +70,8 @@ export class MpvProcess extends EventEmitter<MpvProcessEvents> {
       shell: false,
       windowsHide: true,
       stdio: ['ignore', 'ignore', 'pipe'],
+      // Never 'detached': on Windows, Node places non-detached children in a job object that
+      // ends them when Frame exits or crashes, so mpv cannot be left running (tested in e2e).
     })
 
     const earlyExit = new Promise<never>((_, reject) => {

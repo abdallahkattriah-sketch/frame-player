@@ -158,4 +158,23 @@ describe('parseRetryAfter', () => {
     expect(parseRetryAfter(null)).toBeUndefined()
     expect(parseRetryAfter('soon')).toBeUndefined()
   })
+
+  it('never puts credentials from the URL or headers into error messages', async () => {
+    const secret = 'abcdef0123456789abcdef0123456789'
+    const secretUrl = new URL(`https://api.example.test/3/search?api_key=${secret}&query=x`)
+    const failures: (Response | Error)[] = [
+      new Response('nope', { status: 401 }),
+      new Response('missing', { status: 404 }),
+      new Response('<html>', { status: 200, headers: { 'content-type': 'text/html' } }),
+      new TypeError(`fetch failed for ${secretUrl.href}`),
+    ]
+    for (const failure of failures) {
+      const { http } = client([failure, failure, failure, failure], { maxRetries: 0 })
+      const error = await http
+        .getJson(secretUrl, schema, { headers: { Authorization: `Bearer ${secret}` } })
+        .catch((e: unknown) => e)
+      expect(error).toBeInstanceOf(HttpError)
+      expect((error as HttpError).message).not.toContain(secret)
+    }
+  })
 })

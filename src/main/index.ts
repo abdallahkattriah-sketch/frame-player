@@ -1,7 +1,13 @@
 import { app, BrowserWindow, dialog, session, shell } from 'electron'
 import { join } from 'node:path'
-import { hardenSession, hardenWebContents, secureWebPreferences } from './security/web-security'
+import {
+  hardenSession,
+  hardenWebContents,
+  isAllowedAppUrl,
+  secureWebPreferences,
+} from './security/web-security'
 import { registerIpcHandlers } from './ipc/register-handlers'
+import { setIpcSenderPolicy } from './ipc/handle'
 import { configureUserDataDir, devOverrides, resolveAppPaths } from './application/app-paths'
 import { handleArtworkProtocol, registerArtworkScheme } from './metadata/artwork-protocol'
 import { chooseLocalSubtitle, discoverLocalSubtitles } from './subtitles/local-discovery'
@@ -164,6 +170,8 @@ if (!app.requestSingleInstanceLock()) {
       services.settings.update({ general: { setupComplete: true } })
     }
 
+    // Only Frame's own pages (bundled files, or the dev server in development) may call IPC.
+    setIpcSenderPolicy((url) => isAllowedAppUrl(url, devServerUrl))
     registerIpcHandlers({
       ...services,
       player,
