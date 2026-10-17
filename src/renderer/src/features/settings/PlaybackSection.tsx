@@ -9,7 +9,7 @@ function errorText(e: unknown) {
     : String(e)
 }
 
-function NumberSetting({
+export function NumberSetting({
   label,
   value,
   min,
@@ -59,6 +59,8 @@ export function PlaybackSection() {
 
   useEffect(() => {
     void window.frame.settings.get().then((s) => setSettings(s.playback))
+    // Audio settings and resets change the same section.
+    return window.frame.settings.onChanged((s) => setSettings(s.playback))
   }, [])
 
   /** Applies immediately, saves, and reverts on failure. */
@@ -119,14 +121,6 @@ export function PlaybackSection() {
           suffix="% of the video"
           onCommit={(completionThresholdPercent) => update({ completionThresholdPercent })}
         />
-        <NumberSetting
-          label="Starting volume"
-          value={settings.defaultVolume}
-          min={0}
-          max={100}
-          suffix="%"
-          onCommit={(defaultVolume) => update({ defaultVolume })}
-        />
         <label className="flex items-center gap-2">
           <span className="w-56 text-muted">Hardware decoding</span>
           <select
@@ -144,7 +138,7 @@ export function PlaybackSection() {
           </select>
         </label>
         <p className="text-xs text-subtle">
-          Starting volume and hardware decoding apply the next time the player opens.
+          Hardware decoding applies the next time the player opens.
         </p>
         {error && (
           <p role="alert" className="text-danger">

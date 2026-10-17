@@ -195,6 +195,31 @@ export const migrations: readonly Migration[] = [
       CREATE INDEX bookmarks_path ON bookmarks (path_key, position_seconds);
     `,
   },
+  {
+    version: 6,
+    name: 'collections',
+    sql: `
+      -- User collections and playlists. Membership rows never affect the files themselves;
+      -- they disappear with the collection, or when a library folder is removed.
+      CREATE TABLE collections (
+        id         INTEGER PRIMARY KEY,
+        name       TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 100),
+        kind       TEXT NOT NULL CHECK (kind IN ('collection', 'playlist')),
+        sort_order INTEGER NOT NULL,
+        created_at TEXT NOT NULL
+      ) STRICT;
+
+      CREATE TABLE collection_items (
+        collection_id INTEGER NOT NULL REFERENCES collections (id) ON DELETE CASCADE,
+        file_id       INTEGER NOT NULL REFERENCES media_files (id) ON DELETE CASCADE,
+        position      INTEGER NOT NULL,
+        added_at      TEXT NOT NULL,
+        PRIMARY KEY (collection_id, file_id)
+      ) STRICT;
+      CREATE INDEX collection_items_order ON collection_items (collection_id, position);
+      CREATE INDEX collection_items_file ON collection_items (file_id);
+    `,
+  },
 ]
 
 export const latestSchemaVersion = migrations.reduce((max, m) => Math.max(max, m.version), 0)

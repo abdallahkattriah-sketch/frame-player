@@ -50,12 +50,7 @@ export function migrate(
 
   let backupPath: string | undefined
   if (from > 0 && options.backupDir) {
-    backupPath = backupBeforeMigration(
-      db,
-      options.backupDir,
-      from,
-      options.now ?? (() => new Date()),
-    )
+    backupPath = backupDatabase(db, options.backupDir, from, options.now ?? (() => new Date()))
   }
 
   for (const migration of pending) {
@@ -68,7 +63,13 @@ export function migrate(
   return { from, to: getSchemaVersion(db), backupPath }
 }
 
-function backupBeforeMigration(db: Database, dir: string, version: number, now: () => Date) {
+/** Copies the database into `dir` (VACUUM INTO), keeping the most recent backups. */
+export function backupDatabase(
+  db: Database,
+  dir: string,
+  version: number,
+  now: () => Date = () => new Date(),
+): string {
   mkdirSync(dir, { recursive: true })
   const stamp = now().toISOString().replaceAll(':', '-')
   const path = join(dir, `frame-v${version}-${stamp}.db`)

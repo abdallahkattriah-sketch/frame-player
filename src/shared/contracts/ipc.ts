@@ -3,6 +3,7 @@ import type { AppSettings, SettingsPatch } from '../settings/schema'
 import type { Theme } from '../settings/theme'
 import type { CredentialId, CredentialStoreStatus } from './credentials'
 import type { Bookmark, BookmarkEdit } from './bookmarks'
+import type { Collection, CollectionKind } from './collections'
 import type { OpenMediaResult, PlayerCommand, PlayerState, ScreenshotResult } from './player'
 import type {
   AddFolderResult,
@@ -44,6 +45,15 @@ export const appInfoSchema = z.object({
 
 export type AppInfo = z.infer<typeof appInfoSchema>
 
+/** Sizes in bytes of Frame's local data. */
+export interface StorageInfo {
+  dataDir: string
+  databaseBytes: number
+  artworkBytes: number
+  thumbnailBytes: number
+  backupBytes: number
+}
+
 export interface StartupStatus {
   /** Present when the database was unreadable and Frame started with a fresh one. */
   databaseRecovery?: { backupPath: string }
@@ -62,6 +72,8 @@ export interface FrameApi {
   settings: {
     get: () => Promise<AppSettings>
     update: (patch: SettingsPatch) => Promise<AppSettings>
+    /** Restores defaults; library data, history and credentials are kept. */
+    reset: () => Promise<AppSettings>
     /** Fires in every window after settings change (e.g. theme edits apply everywhere). */
     onChanged: (listener: (settings: AppSettings) => void) => () => void
   }
@@ -118,7 +130,27 @@ export interface FrameApi {
     /** Fires when library contents or watch state change. */
     onChanged: (listener: () => void) => () => void
   }
+  storage: {
+    info: () => Promise<StorageInfo>
+    clearCache: (kind: 'artwork' | 'thumbnails') => Promise<void>
+    /** Returns the backup file's path. */
+    backupNow: () => Promise<string>
+    openDataFolder: () => Promise<void>
+  }
+  collections: {
+    list: () => Promise<Collection[]>
+    create: (name: string, kind: CollectionKind, fileIds?: number[]) => Promise<Collection>
+    rename: (id: number, name: string) => Promise<void>
+    /** Deletes the collection only; files and library entries are kept. */
+    delete: (id: number) => Promise<void>
+    move: (id: number, direction: 'up' | 'down') => Promise<void>
+    addItems: (id: number, fileIds: number[]) => Promise<number>
+    removeItem: (id: number, fileId: number) => Promise<void>
+    moveItem: (id: number, fileId: number, toIndex: number) => Promise<void>
+  }
   history: {
+    /** Forgets all playback progress. */
+    clearAll: () => Promise<void>
     setWatched: (item: ItemRef, watched: boolean) => Promise<void>
     remove: (item: ItemRef) => Promise<void>
   }

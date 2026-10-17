@@ -38,7 +38,13 @@ export function MetadataSection() {
     void window.frame.settings.get().then(setSettings)
     void window.frame.credentials.status().then(setCredentials)
     void window.frame.metadata.status().then(setStatus)
-    return window.frame.metadata.onStatus(setStatus)
+    // Other sections (e.g. Privacy) and resets change the same settings.
+    const offSettings = window.frame.settings.onChanged(setSettings)
+    const offStatus = window.frame.metadata.onStatus(setStatus)
+    return () => {
+      offSettings()
+      offStatus()
+    }
   }, [])
 
   /** Applies the change immediately, then saves; reverts if saving fails. */

@@ -26,6 +26,13 @@ export const playbackSettingsSchema = z.object({
   timelinePreviews: z.boolean(),
 })
 
+export const generalSettingsSchema = z.object({
+  /** False until the first-run setup is finished or skipped. */
+  setupComplete: z.boolean(),
+  /** Page shown when Frame opens. */
+  startView: z.enum(['home', 'movies', 'shows', 'all']),
+})
+
 export const privacySettingsSchema = z.object({
   onlineMetadataEnabled: z.boolean(),
   onlineSubtitlesEnabled: z.boolean(),
@@ -62,6 +69,13 @@ export const metadataSettingsSchema = z.object({
 
 const languageCode = z.string().regex(/^[a-z]{2}(?:-[A-Z]{2})?$/)
 
+export const audioSettingsSchema = z.object({
+  /** Preferred audio track languages, in order (mpv's choice among a file's tracks). */
+  preferredLanguages: z.array(languageCode).max(5),
+  /** Evens out loud and quiet passages (mpv dynaudnorm filter). */
+  normalizeLoudness: z.boolean(),
+})
+
 export const subtitleSettingsSchema = z.object({
   /** In order of preference; the first available is selected automatically. */
   preferredLanguages: z.array(languageCode).min(1).max(5),
@@ -77,7 +91,9 @@ export const subtitleSettingsSchema = z.object({
 })
 
 export const appSettingsSchema = z.object({
+  general: generalSettingsSchema,
   playback: playbackSettingsSchema,
+  audio: audioSettingsSchema,
   library: librarySettingsSchema,
   metadata: metadataSettingsSchema,
   subtitles: subtitleSettingsSchema,
@@ -94,6 +110,7 @@ export type SettingsSection = keyof AppSettings
 export const settingsSections = Object.keys(appSettingsSchema.shape) as SettingsSection[]
 
 export const defaultSettings: AppSettings = {
+  general: { setupComplete: false, startView: 'home' },
   playback: {
     resumePlayback: true,
     seekStepSeconds: 10,
@@ -102,6 +119,7 @@ export const defaultSettings: AppSettings = {
     hardwareDecoding: 'auto-safe',
     timelinePreviews: true,
   },
+  audio: { preferredLanguages: [], normalizeLoudness: false },
   library: { videoExtensions: [...defaultVideoExtensions] },
   metadata: { language: 'en-US', autoIdentify: true },
   subtitles: {
@@ -123,7 +141,9 @@ export const defaultSettings: AppSettings = {
 /** A partial update: any section, any subset of its fields. Unknown keys are rejected. */
 export const settingsPatchSchema = z
   .object({
+    general: generalSettingsSchema.partial().strict().optional(),
     playback: playbackSettingsSchema.partial().strict().optional(),
+    audio: audioSettingsSchema.partial().strict().optional(),
     library: librarySettingsSchema.partial().strict().optional(),
     ui: uiSettingsSchema.partial().strict().optional(),
     metadata: metadataSettingsSchema.partial().strict().optional(),

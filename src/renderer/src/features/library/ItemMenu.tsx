@@ -3,6 +3,7 @@ import { MoreHorizontal } from 'lucide-react'
 import type { LibraryItem } from '@shared/contracts/library'
 import { displayTitle, itemRef } from './item-format'
 import { matchRequestFor, useMetadataActions } from '@renderer/features/metadata/metadata-actions'
+import { useCurrentCollection } from '@renderer/features/collections/CollectionView'
 
 interface ItemMenuProps {
   item: LibraryItem
@@ -17,6 +18,7 @@ export function ItemMenu({ item, open, onOpenChange, onPlay, className }: ItemMe
   const rootRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const metadataActions = useMetadataActions()
+  const current = useCurrentCollection()
 
   useEffect(() => {
     if (!open) return
@@ -64,6 +66,30 @@ export function ItemMenu({ item, open, onOpenChange, onPlay, className }: ItemMe
       action: () => window.frame.library.setFavorite(id, !item.favorite),
     })
     actions.push({ label: 'Show in folder', action: () => window.frame.library.showInFolder(id) })
+    actions.push({
+      label: 'Add to collection…',
+      action: () => metadataActions.openAddToCollection(item),
+    })
+    if (current) {
+      const { collection, order } = current
+      const index = order.indexOf(id)
+      if (index > 0) {
+        actions.push({
+          label: 'Move up',
+          action: () => window.frame.collections.moveItem(collection.id, id, index - 1),
+        })
+      }
+      if (index >= 0 && index < order.length - 1) {
+        actions.push({
+          label: 'Move down',
+          action: () => window.frame.collections.moveItem(collection.id, id, index + 1),
+        })
+      }
+      actions.push({
+        label: `Remove from ${collection.name}`,
+        action: () => window.frame.collections.removeItem(collection.id, id),
+      })
+    }
   }
   if (item.progress) {
     actions.push({

@@ -157,6 +157,19 @@ export class ThumbnailService {
     }
   }
 
+  /** Deletes all timeline previews (not bookmark thumbnails); pending previews are cancelled. */
+  clearPreviews(): void {
+    for (const job of this.queue.filter((j) => j.kind === 'preview')) this.drop(job)
+    if (this.running?.job.kind === 'preview') this.running.abort.abort()
+    let names: string[]
+    try {
+      names = readdirSync(this.options.dir).filter((name) => VIDEO_KEY.test(name))
+    } catch {
+      return
+    }
+    for (const name of names) rmSync(join(this.options.dir, name), { recursive: true, force: true })
+  }
+
   /** Cancels everything (app shutdown or player closed). */
   cancelAll(): void {
     for (const job of this.queue.splice(0)) job.done(false)

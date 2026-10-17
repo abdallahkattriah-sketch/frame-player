@@ -17,6 +17,7 @@ const api: FrameApi = {
   settings: {
     get: () => ipcRenderer.invoke(IpcChannel.SettingsGet),
     update: (patch) => ipcRenderer.invoke(IpcChannel.SettingsUpdate, patch),
+    reset: () => ipcRenderer.invoke(IpcChannel.SettingsReset),
     onChanged: (listener) => subscribe<AppSettings>(IpcChannel.SettingsChanged, listener),
   },
   shortcuts: {
@@ -70,7 +71,28 @@ const api: FrameApi = {
     showInFolder: (fileId) => ipcRenderer.invoke(IpcChannel.LibraryShowInFolder, fileId),
     onChanged: (listener) => subscribe<null>(IpcChannel.LibraryChanged, () => listener()),
   },
+  storage: {
+    info: () => ipcRenderer.invoke(IpcChannel.StorageInfo),
+    clearCache: (kind) => ipcRenderer.invoke(IpcChannel.StorageClearCache, kind),
+    backupNow: () => ipcRenderer.invoke(IpcChannel.StorageBackupNow),
+    openDataFolder: () => ipcRenderer.invoke(IpcChannel.StorageOpenDataFolder),
+  },
+  collections: {
+    list: () => ipcRenderer.invoke(IpcChannel.CollectionsList),
+    create: (name, kind, fileIds) =>
+      fileIds === undefined
+        ? ipcRenderer.invoke(IpcChannel.CollectionsCreate, name, kind)
+        : ipcRenderer.invoke(IpcChannel.CollectionsCreate, name, kind, fileIds),
+    rename: (id, name) => ipcRenderer.invoke(IpcChannel.CollectionsRename, id, name),
+    delete: (id) => ipcRenderer.invoke(IpcChannel.CollectionsDelete, id),
+    move: (id, direction) => ipcRenderer.invoke(IpcChannel.CollectionsMove, id, direction),
+    addItems: (id, fileIds) => ipcRenderer.invoke(IpcChannel.CollectionsAddItems, id, fileIds),
+    removeItem: (id, fileId) => ipcRenderer.invoke(IpcChannel.CollectionsRemoveItem, id, fileId),
+    moveItem: (id, fileId, toIndex) =>
+      ipcRenderer.invoke(IpcChannel.CollectionsMoveItem, id, fileId, toIndex),
+  },
   history: {
+    clearAll: () => ipcRenderer.invoke(IpcChannel.HistoryClearAll),
     setWatched: (item, watched) => ipcRenderer.invoke(IpcChannel.HistorySetWatched, item, watched),
     remove: (item) => ipcRenderer.invoke(IpcChannel.HistoryRemove, item),
   },

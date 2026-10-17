@@ -74,6 +74,11 @@ export class HistoryRepository {
       .run(pathKey, path, watched ? 1 : 0, now)
   }
 
+  /** Forgets all playback progress (bookmarks are separate and kept). */
+  deleteAll(): void {
+    this.db.prepare('DELETE FROM playback_history').run()
+  }
+
   delete(pathKey: string): void {
     this.db.prepare('DELETE FROM playback_history WHERE path_key = ?').run(pathKey)
   }

@@ -131,7 +131,7 @@ test('shortcuts: edit with conflict detection, palettes in both windows, theme e
     await stubDialogs(app, shortcuts, shortcuts)
     await page.getByRole('button', { name: 'Export…', exact: true }).click()
     await expect(page.getByTestId('shortcut-message')).toHaveText('Shortcuts exported.')
-    await page.getByRole('button', { name: 'Reset all' }).click()
+    await page.getByRole('button', { name: 'Reset all', exact: true }).click()
     await expect(page.getByTestId('shortcut-screenshot')).toContainText('S')
     await page.getByRole('button', { name: 'Import…', exact: true }).click()
     await expect(page.getByTestId('shortcut-message')).toHaveText('Shortcuts imported.')

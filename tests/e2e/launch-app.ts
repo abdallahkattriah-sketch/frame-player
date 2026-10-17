@@ -9,6 +9,7 @@ export function launchApp(
 ) {
   return electron.launch({
     args: [join(__dirname, '../../out/main/index.js'), ...extraArgs],
-    env: { ...process.env, FRAME_USER_DATA_DIR: userDataDir, ...extraEnv },
+    // First-run setup is skipped unless a test passes FRAME_SKIP_SETUP: ''.
+    env: { ...process.env, FRAME_USER_DATA_DIR: userDataDir, FRAME_SKIP_SETUP: '1', ...extraEnv },
   })
 }

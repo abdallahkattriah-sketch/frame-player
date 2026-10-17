@@ -13,6 +13,7 @@ const sortLabels: Record<SortKey, string> = {
   size: 'File size',
   'last-watched': 'Last watched',
   episode: 'Episode order',
+  manual: 'Your order',
 }
 
 export interface LibraryBrowserProps {

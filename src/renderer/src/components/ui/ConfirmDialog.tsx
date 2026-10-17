@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 
 interface ConfirmDialogProps {
   open: boolean
@@ -21,6 +21,8 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   const ref = useRef<HTMLDialogElement>(null)
+  // Unique per dialog: several can be mounted on one page.
+  const titleId = useId()
 
   useEffect(() => {
     const dialog = ref.current
@@ -32,14 +34,14 @@ export function ConfirmDialog({
   return (
     <dialog
       ref={ref}
-      aria-labelledby="confirm-dialog-title"
+      aria-labelledby={titleId}
       onCancel={(e) => {
         e.preventDefault()
         onCancel()
       }}
       className="m-auto w-full max-w-md rounded-lg border border-border bg-surface p-5 text-text shadow-2xl backdrop:bg-black/60"
     >
-      <h2 id="confirm-dialog-title" className="text-base font-semibold">
+      <h2 id={titleId} className="text-base font-semibold">
         {title}
       </h2>
       <div className="mt-2 text-sm text-muted">{children}</div>

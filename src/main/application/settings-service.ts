@@ -47,6 +47,15 @@ export class SettingsService {
     return next
   }
 
+  /**
+   * Restores default settings. Library, history, bookmarks, collections and saved credentials
+   * are separate and kept; first-run setup is not shown again.
+   */
+  reset(): AppSettings {
+    this.repository.clear()
+    return this.update({ general: { setupComplete: true } })
+  }
+
   private parseSection<S extends SettingsSection>(section: S, json: string): AppSettings[S] {
     const defaults = defaultSettings[section]
     let raw: unknown

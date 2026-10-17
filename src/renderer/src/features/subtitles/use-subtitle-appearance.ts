@@ -27,13 +27,22 @@ export function useSubtitleAppearance() {
         setAppearance(s.subtitleStyle)
       })
       .catch((e: unknown) => setError(errorText(e)))
-    return () => window.clearTimeout(timer.current)
+    // Another window (player or settings) or a reset changed the profiles.
+    const off = window.frame.settings.onChanged((s) => {
+      saved.current = s.subtitleStyle
+      if (timer.current === undefined) setAppearance(s.subtitleStyle)
+    })
+    return () => {
+      off()
+      window.clearTimeout(timer.current)
+    }
   }, [])
 
   const change = useCallback((next: SubtitleAppearance) => {
     setAppearance(next)
     window.clearTimeout(timer.current)
     timer.current = window.setTimeout(() => {
+      timer.current = undefined
       window.frame.settings
         .update({ subtitleStyle: next })
         .then((s) => {

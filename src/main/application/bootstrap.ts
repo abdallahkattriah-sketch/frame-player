@@ -26,6 +26,8 @@ import { TmdbClient } from '../metadata/tmdb/tmdb-client'
 import { MetadataService } from '../metadata/metadata-service'
 import { ArtworkCache } from '../metadata/artwork-cache'
 import { SettingsService } from './settings-service'
+import { StorageService } from './storage-service'
+import { CollectionRepository } from '../database/repositories/collection-repository'
 import { BookmarkService } from './bookmark-service'
 import { BookmarkRepository } from '../database/repositories/bookmark-repository'
 import { mpvFrameExtractor, ThumbnailService } from '../media-engine/thumbnail-service'
@@ -45,6 +47,8 @@ export interface AppServices {
   subtitles: SubtitleService
   thumbnails: ThumbnailService
   bookmarks: BookmarkService
+  collections: CollectionRepository
+  storage: StorageService
   startupStatus: StartupStatus
 }
 
@@ -222,6 +226,8 @@ export function bootstrapServices(
     subtitles,
     thumbnails,
     bookmarks,
+    collections: new CollectionRepository(db),
+    storage: new StorageService({ paths, db, clearPreviews: () => thumbnails.clearPreviews() }),
     startupStatus: recoveredFrom
       ? { databaseRecovery: { backupPath: recoveredFrom.backupPath } }
       : {},

@@ -2,8 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { LibraryItem } from '@shared/contracts/library'
 import { AppShell } from '@renderer/components/shell/AppShell'
 import { MainCommandPalette } from './MainCommandPalette'
+import { useSettings } from './settings-context'
+import { SetupWizard } from '@renderer/features/setup/SetupWizard'
 import { useAppShortcuts } from './use-app-shortcuts'
-import type { NavItemId } from '@renderer/components/shell/nav-items'
+import type { NavItemId, ViewId } from '@renderer/components/shell/nav-items'
+import { CollectionView } from '@renderer/features/collections/CollectionView'
+import { AddToCollectionDialog } from '@renderer/features/collections/AddToCollectionDialog'
+import { useCollections } from '@renderer/features/collections/use-collections'
 import { HomeView } from '@renderer/features/home/HomeView'
 import { SettingsView } from '@renderer/features/settings/SettingsView'
 import { AllMediaView, HistoryView, MoviesView } from '@renderer/features/library/views'
@@ -19,7 +24,14 @@ import {
 } from '@renderer/features/metadata/metadata-actions'
 
 export function App() {
-  const [activeView, setActiveView] = useState<NavItemId>('home')
+  const { settings } = useSettings()
+  // Until the user navigates, the start page from Settings > General is shown.
+  const [chosenView, setActiveView] = useState<ViewId | null>(null)
+  const activeView: ViewId = chosenView ?? settings?.general.startView ?? 'home'
+  const [setupRequested, setSetupRequested] = useState(false)
+  const showSetup = setupRequested || settings?.general.setupComplete === false
+  const [collectionItem, setCollectionItem] = useState<LibraryItem | null>(null)
+  const { collections } = useCollections()
   const [search, setSearch] = useState('')
   const [matchRequest, setMatchRequest] = useState<MatchRequest | null>(null)
   const [detailsItem, setDetailsItem] = useState<LibraryItem | null>(null)
@@ -27,7 +39,7 @@ export function App() {
   const [showPalette, setShowPalette] = useState(false)
   const query = useDebounced(search.trim(), 200)
 
-  const navigate = useCallback((id: NavItemId) => {
+  const navigate = useCallback((id: ViewId) => {
     setActiveView(id)
     if (id === 'home' || id === 'history' || id === 'settings') setSearch('')
   }, [])
@@ -46,13 +58,25 @@ export function App() {
       openMatch: setMatchRequest,
       openDetails: setDetailsItem,
       openSubtitles: setSubtitleItem,
+      openAddToCollection: setCollectionItem,
     }),
     [],
   )
 
   // Searching from a view without its own search shows results across the library.
-  const searchable = activeView === 'movies' || activeView === 'shows' || activeView === 'all'
-  const view = query && !searchable ? 'all' : activeView
+  const collectionIndex = activeView.startsWith('collection-')
+    ? collections.findIndex((c) => `collection-${c.id}` === activeView)
+    : -1
+  const collection = collections[collectionIndex]
+  const searchable =
+    activeView === 'movies' || activeView === 'shows' || activeView === 'all' || !!collection
+  // A deleted collection falls back to Home.
+  const page: NavItemId | 'collection' = collection
+    ? 'collection'
+    : activeView.startsWith('collection-')
+      ? 'home'
+      : (activeView as NavItemId)
+  const view = query && !searchable ? 'all' : page
 
   const content = (() => {
     switch (view) {
@@ -65,9 +89,19 @@ export function App() {
       case 'history':
         return <HistoryView />
       case 'settings':
-        return <SettingsView />
+        return <SettingsView onRunSetup={() => setSetupRequested(true)} />
       case 'home':
         return <HomeView onOpenSettings={() => setActiveView('settings')} />
+      case 'collection':
+        return collection ? (
+          <CollectionView
+            collection={collection}
+            search={query}
+            isFirst={collectionIndex === 0}
+            isLast={collectionIndex === collections.length - 1}
+            onDeleted={() => navigate('home')}
+          />
+        ) : null
     }
   })()
 
@@ -98,6 +132,10 @@ export function App() {
           isEpisode={subtitleItem.kind === 'episode'}
           onClose={() => setSubtitleItem(null)}
         />
+      )}
+      {showSetup && <SetupWizard onDone={() => setSetupRequested(false)} />}
+      {collectionItem && (
+        <AddToCollectionDialog item={collectionItem} onClose={() => setCollectionItem(null)} />
       )}
       {showPalette && (
         <MainCommandPalette onNavigate={navigate} onClose={() => setShowPalette(false)} />

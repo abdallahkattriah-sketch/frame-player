@@ -51,6 +51,8 @@ export interface PlayerControllerOptions {
   subtitleLanguages?: () => string
   /** mpv properties for the active subtitle style profile. */
   subtitleStyle?: () => [string, string | number | boolean][]
+  /** Preferred audio languages (e.g. "ar,en") and the audio filter chain ("" for none). */
+  audio?: () => { languages: string; filter: string }
 }
 
 const STATE_FLUSH_MS = 100
@@ -169,11 +171,19 @@ export class PlayerController {
     return true
   }
 
-  /** Applies the current subtitle style to the running player (no-op when none is running). */
-  async applySubtitleStyle(): Promise<void> {
+  /**
+   * Applies settings that take effect while playing (subtitle style, audio preferences) to the
+   * running player. No-op when none is running.
+   */
+  async applyLiveSettings(): Promise<void> {
     const mpv = this.mpv
-    if (!mpv?.running || !this.options.subtitleStyle) return
-    for (const [name, value] of this.options.subtitleStyle()) {
+    if (!mpv?.running) return
+    const audio = this.options.audio?.()
+    const properties: [string, string | number | boolean][] = [
+      ...(this.options.subtitleStyle?.() ?? []),
+    ]
+    if (audio) properties.push(['alang', audio.languages], ['af', audio.filter])
+    for (const [name, value] of properties) {
       try {
         await mpv.client.setProperty(name, value)
       } catch (error) {
@@ -303,7 +313,7 @@ export class PlayerController {
       mpv.client.on('event', (event) => this.onMpvEvent(event))
       for (const name of observedProperties) await mpv.client.observeProperty(name)
       this.mpv = mpv
-      await this.applySubtitleStyle()
+      await this.applyLiveSettings()
       this.update({ ...this.state, status: 'idle' })
       this.keepVideoOnTop()
       return mpv

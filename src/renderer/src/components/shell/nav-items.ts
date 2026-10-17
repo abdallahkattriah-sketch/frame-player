@@ -1,6 +1,10 @@
 import { Clock, Film, Home, Library, Settings, Tv, type LucideIcon } from 'lucide-react'
 
 export type NavItemId = 'home' | 'movies' | 'shows' | 'all' | 'history' | 'settings'
+/** A fixed page or one of the user's collections. */
+export type ViewId = NavItemId | `collection-${number}`
+
+export const collectionViewId = (id: number): ViewId => `collection-${id}`
 
 export interface NavItem {
   id: NavItemId

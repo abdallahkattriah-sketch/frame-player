@@ -17,6 +17,7 @@ export function devOverrides(): {
   tmdbImageBase?: string
   openSubtitlesOrigin?: string
   subSourceOrigin?: string
+  skipSetup?: boolean
 } {
   if (app.isPackaged) return {}
   return {
@@ -24,6 +25,7 @@ export function devOverrides(): {
     tmdbImageBase: process.env['FRAME_TMDB_IMAGE_BASE'] || undefined,
     openSubtitlesOrigin: process.env['FRAME_OPENSUBTITLES_ORIGIN'] || undefined,
     subSourceOrigin: process.env['FRAME_SUBSOURCE_ORIGIN'] || undefined,
+    skipSetup: process.env['FRAME_SKIP_SETUP'] === '1',
   }
 }
 

@@ -2,11 +2,11 @@ import type { ReactNode } from 'react'
 import { MiniPlayer } from './MiniPlayer'
 import { Sidebar } from './Sidebar'
 import { Toolbar } from './Toolbar'
-import type { NavItemId } from './nav-items'
+import type { ViewId } from './nav-items'
 
 interface AppShellProps {
-  activeView: NavItemId
-  onNavigate: (id: NavItemId) => void
+  activeView: ViewId
+  onNavigate: (id: ViewId) => void
   search: string
   onSearchChange: (value: string) => void
   /** Optional side panel (e.g. details) beside the main content. */

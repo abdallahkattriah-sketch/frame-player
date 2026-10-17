@@ -82,6 +82,8 @@ const orderBy: Record<SortKey, (dir: 'ASC' | 'DESC') => string> = {
   'last-watched': (d) => `h.last_watched_at IS NULL, h.last_watched_at ${d}`,
   episode: (d) =>
     `m.parsed_season IS NULL, m.parsed_season ${d}, m.parsed_episode ${d}, m.file_name COLLATE NOCASE ${d}`,
+  // Only meaningful with a collection join (ci); see query().
+  manual: (d) => `ci.position ${d}`,
 }
 
 function escapeLike(text: string): string {
@@ -148,6 +150,15 @@ export class LibraryQueryRepository {
         break
     }
 
+    if (q.collectionId !== undefined) {
+      // Unavailable files stay visible in collections (marked missing) so the order is kept.
+      from += ' JOIN collection_items ci ON ci.file_id = m.id AND ci.collection_id = ?'
+      params.push(q.collectionId)
+      includeMissing = true
+      if (!q.sort) sort = 'manual'
+    } else if (sort === 'manual') {
+      sort = 'title'
+    }
     if (!includeMissing) where.push('m.missing = 0')
     if (q.showKey !== undefined) {
       where.push("m.parsed_kind = 'episode'", 'lower(m.parsed_title) = ?')

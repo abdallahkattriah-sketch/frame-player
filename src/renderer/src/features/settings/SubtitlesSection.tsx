@@ -165,7 +165,13 @@ export function SubtitlesSection() {
     void window.frame.settings.get().then(setSettings)
     void window.frame.credentials.status().then(setCredentials)
     void window.frame.subtitles.providers().then(setProviders)
-    return window.frame.subtitles.onProviders(setProviders)
+    // Other sections (e.g. Privacy) and resets change the same settings.
+    const offSettings = window.frame.settings.onChanged(setSettings)
+    const offProviders = window.frame.subtitles.onProviders(setProviders)
+    return () => {
+      offSettings()
+      offProviders()
+    }
   }, [])
 
   const refreshProviders = (status: CredentialStoreStatus) => {
@@ -375,6 +381,9 @@ export function SubtitlesSection() {
         </p>
       )}
 
+      <h3 id="subtitle-providers-heading" className="mt-2 text-base font-semibold">
+        Subtitle providers
+      </h3>
       <ProviderCard
         status={status('opensubtitles')}
         enabled={s.providers.opensubtitles}

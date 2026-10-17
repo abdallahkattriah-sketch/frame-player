@@ -14,6 +14,11 @@ export class SettingsRepository {
       .all() as unknown as SettingsRow[]
   }
 
+  /** Removes every stored section, so all settings return to their defaults. */
+  clear(): void {
+    this.db.prepare('DELETE FROM app_settings').run()
+  }
+
   upsert(section: string, valueJson: string): void {
     this.db
       .prepare(

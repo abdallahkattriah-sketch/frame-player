@@ -40,6 +40,14 @@ import {
   writeTextFile,
 } from '../application/settings-files'
 import type { AppSettings } from '@shared/settings/schema'
+import type { CollectionRepository } from '../database/repositories/collection-repository'
+import type { StorageService } from '../application/storage-service'
+import {
+  collectionFileIdsSchema,
+  collectionIdSchema,
+  collectionKinds,
+  collectionNameSchema,
+} from '@shared/contracts/collections'
 import type { BookmarkService } from '../application/bookmark-service'
 import type { ThumbnailService } from '../media-engine/thumbnail-service'
 import { bookmarkEditSchema, bookmarkIdSchema } from '@shared/contracts/bookmarks'
@@ -56,6 +64,10 @@ export interface IpcDependencies {
   subtitles: SubtitleService
   thumbnails: ThumbnailService
   bookmarks: BookmarkService
+  collections: CollectionRepository
+  storage: StorageService
+  /** Main data folder (opened from Settings > Storage). */
+  openPath: (path: string) => Promise<string>
   onLibraryChanged: () => void
   onSettingsChanged: (settings: AppSettings) => void
   showMainView: (view: 'settings') => void
@@ -157,9 +169,84 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
     const updated = deps.settings.update(patch)
     deps.onSettingsChanged(updated)
     // Subtitle style edits show on the playing video right away.
-    if (patch.subtitleStyle) void deps.player.applySubtitleStyle()
+    if (patch.subtitleStyle || patch.audio) void deps.player.applyLiveSettings()
     return updated
   })
+
+  handle(IpcChannel.SettingsReset, noArgs, () => {
+    const settings = deps.settings.reset()
+    deps.onSettingsChanged(settings)
+    void deps.player.applyLiveSettings()
+    return settings
+  })
+
+  handle(IpcChannel.StorageInfo, noArgs, () => deps.storage.info())
+  handle(IpcChannel.StorageClearCache, z.tuple([z.enum(['artwork', 'thumbnails'])]), ([kind]) =>
+    deps.storage.clearCache(kind),
+  )
+  handle(IpcChannel.StorageBackupNow, noArgs, () => deps.storage.backupNow())
+  handle(IpcChannel.StorageOpenDataFolder, noArgs, async () => {
+    // A fixed folder Frame owns; nothing from the renderer is opened.
+    await deps.openPath(deps.storage.dataDir)
+  })
+  handle(IpcChannel.HistoryClearAll, noArgs, () => {
+    deps.historyRepository.deleteAll()
+    deps.onLibraryChanged()
+  })
+
+  const collectionChanged = <T>(result: T): T => {
+    deps.onLibraryChanged()
+    return result
+  }
+  handle(IpcChannel.CollectionsList, noArgs, () => deps.collections.list())
+  handle(
+    IpcChannel.CollectionsCreate,
+    z.union([
+      z.tuple([collectionNameSchema, z.enum(collectionKinds)]),
+      z.tuple([collectionNameSchema, z.enum(collectionKinds), collectionFileIdsSchema]),
+    ]),
+    ([name, kind, fileIds]) => {
+      const created = deps.collections.create(name, kind)
+      const added = fileIds ? deps.collections.addFiles(created.id, fileIds) : 0
+      return collectionChanged({ ...created, itemCount: added })
+    },
+  )
+  handle(
+    IpcChannel.CollectionsRename,
+    z.tuple([collectionIdSchema, collectionNameSchema]),
+    ([id, name]) => {
+      collectionChanged(deps.collections.rename(id, name))
+    },
+  )
+  handle(IpcChannel.CollectionsDelete, z.tuple([collectionIdSchema]), ([id]) => {
+    collectionChanged(deps.collections.delete(id))
+  })
+  handle(
+    IpcChannel.CollectionsMove,
+    z.tuple([collectionIdSchema, z.enum(['up', 'down'])]),
+    ([id, direction]) => {
+      collectionChanged(deps.collections.move(id, direction))
+    },
+  )
+  handle(
+    IpcChannel.CollectionsAddItems,
+    z.tuple([collectionIdSchema, collectionFileIdsSchema]),
+    ([id, fileIds]) => collectionChanged(deps.collections.addFiles(id, fileIds)),
+  )
+  handle(
+    IpcChannel.CollectionsRemoveItem,
+    z.tuple([collectionIdSchema, z.number().int().positive()]),
+    ([id, fileId]) => {
+      collectionChanged(deps.collections.removeFile(id, fileId))
+    },
+  )
+  handle(
+    IpcChannel.CollectionsMoveItem,
+    z.tuple([collectionIdSchema, z.number().int().positive(), z.number().int().min(0)]),
+    ([id, fileId, toIndex]) => {
+      collectionChanged(deps.collections.moveFile(id, fileId, toIndex))
+    },
+  )
 
   handle(IpcChannel.ShortcutsExport, noArgs, async () => {
     const path = await pickFileToSave('Export shortcuts', 'frame-shortcuts.json', 'Frame shortcuts')

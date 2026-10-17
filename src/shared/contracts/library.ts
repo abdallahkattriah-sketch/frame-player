@@ -78,7 +78,16 @@ export const libraryViews = [
 ] as const
 export type LibraryView = (typeof libraryViews)[number]
 
-export const sortKeys = ['title', 'year', 'added', 'size', 'last-watched', 'episode'] as const
+/** 'manual' is the user's order inside a collection (title order elsewhere). */
+export const sortKeys = [
+  'title',
+  'year',
+  'added',
+  'size',
+  'last-watched',
+  'episode',
+  'manual',
+] as const
 export type SortKey = (typeof sortKeys)[number]
 
 export const libraryQuerySchema = z
@@ -89,6 +98,8 @@ export const libraryQuerySchema = z
     direction: z.enum(['asc', 'desc']).optional(),
     /** Episodes of one show: the show key from LibraryShow. */
     showKey: z.string().max(500).optional(),
+    /** Items of one collection or playlist. */
+    collectionId: z.number().int().positive().optional(),
     kind: z.enum(['movie', 'episode', 'unknown']).optional(),
     resolution: z.string().max(10).optional(),
     watched: z.enum(['watched', 'unwatched', 'in-progress']).optional(),

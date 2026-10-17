@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, session } from 'electron'
+import { app, BrowserWindow, dialog, session, shell } from 'electron'
 import { join } from 'node:path'
 import { hardenSession, hardenWebContents, secureWebPreferences } from './security/web-security'
 import { registerIpcHandlers } from './ipc/register-handlers'
@@ -11,6 +11,7 @@ import { resolveMpvPath } from './media-engine/mpv-locator'
 import { raiseVideoWindow } from './media-engine/video-window-order'
 import { extractMediaPaths } from './filesystem/launch-args'
 import { subtitleStyleProperties } from './media-engine/subtitle-style-properties'
+import { LOUDNESS_FILTER } from './media-engine/audio-filter'
 import { activeSubtitleStyle, defaultSubtitleAppearance } from '@shared/settings/subtitle-style'
 import { IpcChannel } from '@shared/contracts/channels'
 
@@ -138,6 +139,13 @@ if (!app.requestSingleInstanceLock()) {
       resumeFor: (path) => services?.history.resumeFor(path) ?? null,
       subtitleLanguages: () =>
         services?.settings.get().subtitles.preferredLanguages.join(',') ?? '',
+      audio: () => {
+        const audio = services?.settings.get().audio
+        return {
+          languages: audio?.preferredLanguages.join(',') ?? '',
+          filter: audio?.normalizeLoudness ? LOUDNESS_FILTER : '',
+        }
+      },
       subtitleStyle: () =>
         subtitleStyleProperties(
           activeSubtitleStyle(services?.settings.get().subtitleStyle ?? defaultSubtitleAppearance),
@@ -151,11 +159,17 @@ if (!app.requestSingleInstanceLock()) {
       },
     })
 
+    // Development and tests may skip first-run setup (ignored in packaged builds).
+    if (devOverrides().skipSetup && !services.settings.get().general.setupComplete) {
+      services.settings.update({ general: { setupComplete: true } })
+    }
+
     registerIpcHandlers({
       ...services,
       player,
       onLibraryChanged: notifyLibraryChanged,
       onSettingsChanged: (settings) => broadcast(IpcChannel.SettingsChanged, settings),
+      openPath: (path) => shell.openPath(path),
       showMainView: (view) => {
         const win = mainWindow && !mainWindow.isDestroyed() ? mainWindow : createMainWindow()
         if (win.isMinimized()) win.restore()
