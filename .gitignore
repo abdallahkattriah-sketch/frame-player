@@ -13,3 +13,4 @@ resources/mpv/
 !.env.example
 .DS_Store
 Thumbs.db
+*.tsbuildinfo
