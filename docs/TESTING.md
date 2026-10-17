@@ -1,7 +1,7 @@
 # Testing and acceptance
 
 How each acceptance criterion from the project specification (§22) is verified, and how to run
-the checks. Last full run: 2026-10-18, Windows 11, Electron 44 — 215 unit tests passed
+the checks. Last full run: 2026-10-18, Windows 11, Electron 44 — 217 unit tests passed
 (9 live-API tests skipped without keys), 23/23 end-to-end tests passed.
 
 ## Running the checks
@@ -97,9 +97,14 @@ npx vitest run tests/integration
 
 ### Packaging
 
-| Criterion                                                                       | Evidence                       |
-| ------------------------------------------------------------------------------- | ------------------------------ |
-| Production build, packaged app launches, finds mpv, plays a file, no dev server | **Not run yet** — milestone M9 |
+| Criterion                                                                   | Evidence                                                                                                                                              |
+| --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Production build succeeds                                                   | Automated — `npm run dist` produced the installer and the portable exe (2026-10-18)                                                                   |
+| Packaged app launches, finds and starts its bundled mpv, plays a local file | Automated — `scripts/build/smoke-test.mjs` on `release/win-unpacked` and on the portable exe: playback time advances, read from mpv over its own pipe |
+| No Vite or dev server needed                                                | Automated — the smoke test sets a bogus dev-server URL and fails if any window fails to load; development switches are shown to be ignored            |
+| Packaged app keeps data where expected, cleans up mpv                       | Automated — smoke test (portable data folder used, `%APPDATA%\Frame` untouched, mpv ends with Frame)                                                   |
+| Installer installs, creates shortcuts, uninstalls                           | **Not run** — installing changes the machine; to be done by hand on a clean Windows account                                                           |
+| Arabic subtitles in the packaged app                                        | **Not run** — check by hand after installing                                                                                                          |
 
 ### Live services
 
@@ -109,20 +114,6 @@ npx vitest run tests/integration
 | OpenSubtitles | **Not run** — needs `FRAME_TEST_OPENSUBTITLES_KEY`                                            |
 | SubSource     | **Not run** — needs `FRAME_TEST_SUBSOURCE_KEY`; its language names are the main open question |
 
-## Security review (M8, 2026-10-18)
+## Security
 
-- No shell execution anywhere; mpv is started with an argument array (`shell: false`), user
-  config and scripts disabled, local playback only (`--ytdl=no`).
-- Every IPC handler checks that the request comes from a Frame page and validates its
-  arguments with a schema; the renderer never sends file paths that are opened unchecked (paths
-  come from the database, native dialogs, or dropped files that must be existing videos).
-- Windows: `contextIsolation`, `sandbox`, no `nodeIntegration`, CSP, navigation and new windows
-  blocked, all permission requests denied.
-- Credentials are encrypted with Windows DPAPI (Electron `safeStorage`); the renderer only sees
-  whether each one is set. Network error messages contain host names only.
-- Imported theme and shortcut files: 64 KB limit, strict schemas, data only. Subtitle ZIPs: no
-  path traversal, size and ratio limits, nothing written but the validated subtitle.
-- The `frame-art://` protocol serves only cache files whose names Frame generates.
-- `npm audit`: 0 known vulnerabilities (production and development dependencies).
-- For packaging (M9): Electron fuses (disable `RunAsNode`, `NODE_OPTIONS`, inspector flags) and
-  code-signing notes.
+The security review and hardening measures are in [SECURITY.md](SECURITY.md).

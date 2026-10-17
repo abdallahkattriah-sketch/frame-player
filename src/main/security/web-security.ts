@@ -39,4 +39,8 @@ export function hardenWebContents(contents: WebContents, devServerUrl: string | 
     if (!isAllowedAppUrl(url, devServerUrl)) event.preventDefault()
   })
   contents.on('will-attach-webview', (event) => event.preventDefault())
+  // A page that cannot load leaves a blank window; say why in the log.
+  contents.on('did-fail-load', (_event, code, description, url, isMainFrame) => {
+    if (isMainFrame) console.error(`window: could not load ${url}: ${description} (${code})`)
+  })
 }

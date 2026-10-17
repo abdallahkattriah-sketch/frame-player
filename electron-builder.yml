@@ -1,0 +1,67 @@
+# Windows packaging for Frame. Build with: npm run dist
+appId: local.frame.player
+productName: Frame
+copyright: Copyright © 2026 Abdallah
+directories:
+  output: release
+  buildResources: build
+
+# Only the built app and its runtime dependencies (zod, koffi) go into app.asar.
+files:
+  - out/**
+  - package.json
+  - '!**/*.map'
+asar: true
+# Chromium's own UI strings (context menus etc.); Frame's interface is unaffected.
+electronLanguages:
+  - en-US
+  - ar
+# koffi's prebuilt Node-API binary works in Electron as-is; nothing is compiled.
+npmRebuild: false
+
+extraResources:
+  # mpv runs as a separate program (GPLv2+); only what playback needs is shipped.
+  - from: resources/mpv
+    to: mpv
+    filter:
+      - mpv.exe
+      - d3dcompiler_43.dll
+      - mpv/fonts.conf
+  - from: build/licenses
+    to: licenses
+  - from: LICENSE
+    to: licenses/FRAME-LICENSE.txt
+  - from: THIRD_PARTY_NOTICES.md
+    to: licenses/THIRD_PARTY_NOTICES.md
+
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch: x64
+    - target: portable
+      arch: x64
+  # Not code-signed: see docs/PACKAGING.md.
+  signAndEditExecutable: true
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  # Library, history and settings stay when Frame is uninstalled.
+  deleteAppDataOnUninstall: false
+  artifactName: Frame-Setup-${version}.exe
+
+portable:
+  artifactName: Frame-${version}-portable.exe
+
+# Hardening switches compiled into the Electron executable.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableCookieEncryption: true
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true

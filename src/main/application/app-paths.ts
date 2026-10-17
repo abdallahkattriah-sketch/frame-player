@@ -29,15 +29,27 @@ export function devOverrides(): {
   }
 }
 
-function userDataOverride(): string | undefined {
-  const override = process.env['FRAME_USER_DATA_DIR']
-  return override && !app.isPackaged ? override : undefined
+/**
+ * Where app state lives when not in %APPDATA%: FRAME_USER_DATA_DIR in development and tests
+ * (ignored when packaged), or a "Frame Data" folder beside the portable executable (the
+ * portable launcher sets PORTABLE_EXECUTABLE_DIR).
+ */
+export function userDataOverrideFor(
+  env: Record<string, string | undefined>,
+  isPackaged: boolean,
+): string | undefined {
+  if (isPackaged) {
+    const portable = env['PORTABLE_EXECUTABLE_DIR']
+    return portable ? join(portable, 'Frame Data') : undefined
+  }
+  return env['FRAME_USER_DATA_DIR'] || undefined
 }
 
-/**
- * Development and tests may redirect all app state with FRAME_USER_DATA_DIR.
- * Must run before the app is ready. Ignored in packaged builds.
- */
+function userDataOverride(): string | undefined {
+  return userDataOverrideFor(process.env, app.isPackaged)
+}
+
+/** Applies userDataOverride(). Must run before the app is ready. */
 export function configureUserDataDir(): void {
   const override = userDataOverride()
   if (override) app.setPath('userData', override)
@@ -52,7 +64,8 @@ export function resolveAppPaths(): AppPaths {
     credentials: join(userData, 'credentials.json'),
     artwork: join(userData, 'cache', 'artwork'),
     thumbnails: join(userData, 'cache', 'thumbs'),
-    // Redirected along with user data so tests never write into the user's Pictures folder.
+    // Redirected along with user data: tests never write into Pictures, and portable copies
+    // keep everything beside the executable.
     screenshots: userDataOverride()
       ? join(userData, 'screenshots')
       : join(app.getPath('pictures'), 'Frame'),

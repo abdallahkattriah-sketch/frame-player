@@ -3,6 +3,8 @@
   "productName": "Frame",
   "version": "0.1.0",
   "description": "Local-first desktop video player for Windows",
+  "author": "Abdallah",
+  "license": "MIT",
   "private": true,
   "main": "./out/main/index.js",
   "scripts": {
@@ -20,7 +22,10 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "electron-vite build && playwright test"
+    "test:e2e": "electron-vite build && playwright test",
+    "licenses": "node scripts/build/collect-licenses.mjs",
+    "pack": "npm run licenses && electron-vite build && electron-builder --win --dir",
+    "dist": "npm run licenses && electron-vite build && electron-builder --win"
   },
   "dependencies": {
     "koffi": "3.3.2",
@@ -37,6 +42,7 @@
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
     "electron": "44.9.0",
+    "electron-builder": "26.16.1",
     "electron-vite": "6.0.0",
     "eslint": "10.13.0",
     "eslint-plugin-react-hooks": "7.1.1",
