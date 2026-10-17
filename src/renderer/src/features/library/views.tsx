@@ -1,0 +1,78 @@
+import { useState } from 'react'
+import type { LibraryView } from '@shared/contracts/library'
+import { LibraryBrowser } from './LibraryBrowser'
+
+const libraryEmpty = 'No videos yet. Add library folders in Settings.'
+
+export function MoviesView({ search }: { search: string }) {
+  return (
+    <LibraryBrowser
+      viewId="movies"
+      title="Movies"
+      query={{ view: 'movies', search }}
+      defaults={{ mode: 'grid', sort: 'title', direction: 'asc' }}
+      sortOptions={['title', 'year', 'added', 'size', 'last-watched']}
+      showFilters
+      emptyState={libraryEmpty}
+    />
+  )
+}
+
+const allMediaFilters: { view: LibraryView; label: string }[] = [
+  { view: 'all', label: 'All' },
+  { view: 'favorites', label: 'Favorites' },
+  { view: 'missing', label: 'Missing files' },
+]
+
+export function AllMediaView({ search }: { search: string }) {
+  const [view, setView] = useState<LibraryView>('all')
+  return (
+    <LibraryBrowser
+      viewId="all-media"
+      title={search ? `Results for “${search}”` : 'All media'}
+      query={{ view, search }}
+      defaults={{ mode: 'list', sort: 'title', direction: 'asc' }}
+      sortOptions={['title', 'year', 'added', 'size', 'last-watched']}
+      showFilters
+      emptyState={
+        view === 'favorites'
+          ? 'No favorites yet. Use an item’s menu to add one.'
+          : view === 'missing'
+            ? 'No missing files.'
+            : libraryEmpty
+      }
+      headerExtra={
+        <div
+          role="group"
+          aria-label="Show"
+          className="flex rounded-md border border-border text-sm"
+        >
+          {allMediaFilters.map((f) => (
+            <button
+              key={f.view}
+              type="button"
+              aria-pressed={view === f.view}
+              onClick={() => setView(f.view)}
+              className={`px-3 py-1 ${view === f.view ? 'bg-elevated text-accent' : 'text-muted hover:text-text'}`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      }
+    />
+  )
+}
+
+export function HistoryView() {
+  return (
+    <LibraryBrowser
+      viewId="history"
+      title="Recently watched"
+      query={{ view: 'recently-watched', limit: 100 }}
+      defaults={{ mode: 'list', sort: 'last-watched', direction: 'desc' }}
+      sortOptions={['last-watched', 'title']}
+      emptyState="Nothing watched yet."
+    />
+  )
+}

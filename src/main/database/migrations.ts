@@ -85,6 +85,31 @@ export const migrations: readonly Migration[] = [
       CREATE INDEX media_files_show ON media_files (parsed_kind, parsed_title, parsed_season, parsed_episode);
     `,
   },
+  {
+    version: 3,
+    name: 'favorites-and-playback-history',
+    sql: `
+      ALTER TABLE media_files ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0 CHECK (favorite IN (0, 1));
+      CREATE INDEX media_files_favorite ON media_files (favorite) WHERE favorite = 1;
+
+      -- Keyed by normalized path (not media_files.id) so history survives removing and
+      -- re-adding a folder, and covers files played from outside the library.
+      CREATE TABLE playback_history (
+        path_key          TEXT PRIMARY KEY NOT NULL,
+        path              TEXT NOT NULL,
+        position_seconds  REAL NOT NULL DEFAULT 0 CHECK (position_seconds >= 0),
+        duration_seconds  REAL CHECK (duration_seconds IS NULL OR duration_seconds >= 0),
+        completed         INTEGER NOT NULL DEFAULT 0 CHECK (completed IN (0, 1)),
+        play_count        INTEGER NOT NULL DEFAULT 0 CHECK (play_count >= 0),
+        last_watched_at   TEXT NOT NULL,
+        -- mpv track ids; 0 means the track type was switched off. NULL = unknown.
+        audio_track_id    INTEGER,
+        subtitle_track_id INTEGER,
+        speed             REAL
+      ) STRICT;
+      CREATE INDEX playback_history_recent ON playback_history (last_watched_at);
+    `,
+  },
 ]
 
 export const latestSchemaVersion = migrations.reduce((max, m) => Math.max(max, m.version), 0)

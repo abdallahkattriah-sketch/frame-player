@@ -61,3 +61,97 @@ export interface AddFolderResult {
   folder?: LibraryFolder
   error?: string
 }
+
+// ── Library browsing ─────────────────────────────────────────────────────────
+
+export const libraryViews = [
+  'all',
+  'movies',
+  'episodes',
+  'recently-added',
+  'continue-watching',
+  'recently-watched',
+  'favorites',
+  'missing',
+] as const
+export type LibraryView = (typeof libraryViews)[number]
+
+export const sortKeys = ['title', 'year', 'added', 'size', 'last-watched', 'episode'] as const
+export type SortKey = (typeof sortKeys)[number]
+
+export const libraryQuerySchema = z
+  .object({
+    view: z.enum(libraryViews),
+    search: z.string().trim().max(200).optional(),
+    sort: z.enum(sortKeys).optional(),
+    direction: z.enum(['asc', 'desc']).optional(),
+    /** Episodes of one show: the show key from LibraryShow. */
+    showKey: z.string().max(500).optional(),
+    kind: z.enum(['movie', 'episode', 'unknown']).optional(),
+    resolution: z.string().max(10).optional(),
+    watched: z.enum(['watched', 'unwatched', 'in-progress']).optional(),
+    limit: z.number().int().min(1).max(50_000).optional(),
+  })
+  .strict()
+
+export type LibraryQuery = z.infer<typeof libraryQuerySchema>
+
+export interface WatchProgress {
+  /** Seconds. */
+  position: number
+  duration: number | null
+  completed: boolean
+  lastWatchedAt: string
+}
+
+/**
+ * A playable item. Library files have a `fileId`; items only known from playback history
+ * (opened outside the library) have just a `historyKey`.
+ */
+export interface LibraryItem {
+  fileId: number | null
+  historyKey: string | null
+  path: string
+  fileName: string
+  kind: MediaKind
+  title: string | null
+  year: number | null
+  season: number | null
+  episode: number | null
+  episodeEnd: number | null
+  episodeTitle: string | null
+  resolution: string | null
+  sizeBytes: number | null
+  addedAt: string | null
+  missing: boolean
+  favorite: boolean
+  progress: WatchProgress | null
+}
+
+export interface LibraryShow {
+  /** Case-folded title; identifies the show in queries. */
+  key: string
+  title: string
+  year: number | null
+  episodeCount: number
+  seasons: number[]
+  /** Some episodes use absolute numbering without a season. */
+  hasUnseasonedEpisodes: boolean
+  watchedCount: number
+  lastAddedAt: string
+}
+
+/** Identifies an item for actions; the main process resolves it to a path itself. */
+export const itemRefSchema = z.union([
+  z.object({ fileId: z.number().int().positive() }).strict(),
+  z.object({ historyKey: z.string().min(1).max(32_767) }).strict(),
+])
+export type ItemRef = z.infer<typeof itemRefSchema>
+
+export const playRequestSchema = z
+  .object({
+    items: z.array(itemRefSchema).min(1).max(5000),
+    startIndex: z.number().int().min(0).optional(),
+  })
+  .strict()
+export type PlayRequest = z.infer<typeof playRequestSchema>

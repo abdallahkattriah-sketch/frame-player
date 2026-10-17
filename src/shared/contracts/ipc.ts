@@ -2,7 +2,17 @@ import { z } from 'zod'
 import type { AppSettings, SettingsPatch } from '../settings/schema'
 import type { CredentialId, CredentialStoreStatus } from './credentials'
 import type { OpenMediaResult, PlayerCommand, PlayerState, ScreenshotResult } from './player'
-import type { AddFolderResult, FolderOptions, LibraryFolder, ScanProgress } from './library'
+import type {
+  AddFolderResult,
+  FolderOptions,
+  ItemRef,
+  LibraryFolder,
+  LibraryItem,
+  LibraryQuery,
+  LibraryShow,
+  PlayRequest,
+  ScanProgress,
+} from './library'
 
 export { IpcChannel, type IpcChannelName } from './channels'
 
@@ -57,5 +67,18 @@ export interface FrameApi {
     /** Rescans one folder, or all folders when `id` is omitted. */
     rescan: (id?: number) => Promise<void>
     onScanProgress: (listener: (progress: ScanProgress) => void) => () => void
+    query: (query: LibraryQuery) => Promise<LibraryItem[]>
+    listShows: (search?: string) => Promise<LibraryShow[]>
+    listResolutions: () => Promise<string[]>
+    /** Plays items in order, starting at `startIndex`. Paths are resolved in the main process. */
+    play: (request: PlayRequest) => Promise<OpenMediaResult>
+    setFavorite: (fileId: number, favorite: boolean) => Promise<void>
+    showInFolder: (fileId: number) => Promise<void>
+    /** Fires when library contents or watch state change. */
+    onChanged: (listener: () => void) => () => void
+  }
+  history: {
+    setWatched: (item: ItemRef, watched: boolean) => Promise<void>
+    remove: (item: ItemRef) => Promise<void>
   }
 }

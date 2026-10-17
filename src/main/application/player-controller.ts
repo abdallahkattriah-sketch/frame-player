@@ -1,7 +1,6 @@
 import { BaseWindow, BrowserWindow } from 'electron'
 import { mkdirSync } from 'node:fs'
 import { basename, extname, join } from 'node:path'
-import { IpcChannel } from '@shared/contracts/channels'
 import {
   initialPlayerState,
   type OpenMediaResult,
@@ -10,7 +9,12 @@ import {
   type ScreenshotResult,
 } from '@shared/contracts/player'
 import { MpvProcess } from '../media-engine/mpv-process'
-import { observedProperties, PlayerStateTracker, toMpvCommands } from '../media-engine/player-state'
+import {
+  observedProperties,
+  parseTracks,
+  PlayerStateTracker,
+  toMpvCommands,
+} from '../media-engine/player-state'
 import type { MpvEvent } from '../media-engine/mpv-ipc-client'
 import { resolveMediaPaths } from '../filesystem/media-files'
 import { hardenWebContents, secureWebPreferences } from '../security/web-security'
@@ -27,6 +31,18 @@ export interface PlayerControllerOptions {
   getEngineSettings: () => { hwdec: string; volume: number }
   /** Directory screenshots are written to. */
   screenshotDir: () => string
+  /** Pushes state to renderer windows (throttled by the controller). */
+  publishState: (state: PlayerState) => void
+  /** Every state change, unthrottled (used for history). */
+  onStateChange?: (state: PlayerState) => void
+  /** The player window closed or the app is quitting; `last` is the final state. */
+  onSessionEnded?: (last: PlayerState) => void
+  /** Where to resume a file that just loaded, if anywhere. */
+  resumeFor?: (path: string) => {
+    position: number
+    audioTrackId: number | null
+    subtitleTrackId: number | null
+  } | null
 }
 
 const STATE_FLUSH_MS = 100
@@ -93,6 +109,13 @@ export class PlayerController {
       this.host?.setFullScreen(!this.host.isFullScreen())
       return
     }
+    if (command.type === 'show-player') {
+      if (this.host && !this.host.isDestroyed()) {
+        if (this.host.isMinimized()) this.host.restore()
+        this.host.focus()
+      }
+      return
+    }
     if (!this.mpv?.running) return
     for (const mpvCommand of toMpvCommands(command)) await this.mpv.client.command(...mpvCommand)
     // mpv has no observable shuffle property; the playlist order change is observed instead.
@@ -114,8 +137,10 @@ export class PlayerController {
     return { path }
   }
 
-  /** Synchronous: safe to call from app 'will-quit'. */
+  /** Synchronous: safe to call from app 'will-quit'. Records the final state first. */
   disposeNow(): void {
+    if (this.state.path) this.options.onSessionEnded?.(this.state)
+    this.state = initialPlayerState
     this.mpv?.killNow()
     this.mpv = null
   }
@@ -175,12 +200,14 @@ export class PlayerController {
     host.on('closed', () => {
       if (this.raiseTimer) clearTimeout(this.raiseTimer)
       this.raiseTimer = null
+      if (this.state.path) this.options.onSessionEnded?.(this.state)
       if (!overlay.isDestroyed()) overlay.destroy()
       void this.mpv?.dispose()
       this.mpv = null
       this.host = null
       this.overlay = null
-      this.state = initialPlayerState
+      this.state = { ...initialPlayerState, status: 'closed' }
+      this.flush()
     })
     overlay.on('closed', () => {
       if (!host.isDestroyed()) host.close()
@@ -265,6 +292,7 @@ export class PlayerController {
   private onMpvEvent(event: MpvEvent) {
     if (event.event === 'file-loaded') {
       this.update({ ...this.state, status: 'ready', error: null })
+      void this.resumeCurrentFile()
     } else if (event.event === 'end-file' && event['reason'] === 'error') {
       const detail = typeof event['file_error'] === 'string' ? event['file_error'] : 'unknown error'
       this.update({
@@ -275,17 +303,45 @@ export class PlayerController {
     }
   }
 
+  /** Restores position and track choices remembered for the file that just loaded. */
+  private async resumeCurrentFile() {
+    const mpv = this.mpv
+    if (!mpv || !this.options.resumeFor) return
+    try {
+      // Ask mpv directly: the 'path' property change may not have arrived yet.
+      const path = await mpv.client.getProperty('path')
+      if (typeof path !== 'string') return
+      const resume = this.options.resumeFor(path)
+      if (!resume) return
+      await mpv.client.command('seek', resume.position, 'absolute+exact')
+      const tracks = parseTracks(await mpv.client.getProperty('track-list'))
+      const ids = new Set(tracks.map((t) => `${t.type}:${t.id}`))
+      const restoreTrack = async (
+        property: 'aid' | 'sid',
+        type: 'audio' | 'sub',
+        id: number | null,
+      ) => {
+        if (id === null) return
+        if (id === 0) await mpv.client.setProperty(property, 'no')
+        else if (ids.has(`${type}:${id}`)) await mpv.client.setProperty(property, id)
+      }
+      await restoreTrack('aid', 'audio', resume.audioTrackId)
+      await restoreTrack('sid', 'sub', resume.subtitleTrackId)
+    } catch (error) {
+      console.warn(`player: could not resume: ${describe(error)}`)
+    }
+  }
+
   private update(next: PlayerState) {
     this.state = next
+    this.options.onStateChange?.(next)
     if (!this.flushTimer) this.flushTimer = setTimeout(() => this.flush(), STATE_FLUSH_MS)
   }
 
   private flush() {
     if (this.flushTimer) clearTimeout(this.flushTimer)
     this.flushTimer = null
-    if (this.overlay && !this.overlay.isDestroyed()) {
-      this.overlay.webContents.send(IpcChannel.PlayerStateChanged, this.state)
-    }
+    this.options.publishState(this.state)
   }
 }
 

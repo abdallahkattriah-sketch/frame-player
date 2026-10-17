@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog } from 'electron'
+import { app, BrowserWindow, dialog, shell } from 'electron'
 import { z } from 'zod'
 import { IpcChannel, appInfoSchema, type AppInfo, type StartupStatus } from '@shared/contracts/ipc'
 import { credentialIdSchema, credentialSecretSchema } from '@shared/contracts/credentials'
@@ -9,7 +9,15 @@ import type { SettingsService } from '../application/settings-service'
 import type { PlayerController } from '../application/player-controller'
 import type { CredentialStore } from '../security/credential-store'
 import type { LibraryService } from '../library/library-service'
-import { folderOptionsSchema } from '@shared/contracts/library'
+import {
+  folderOptionsSchema,
+  itemRefSchema,
+  libraryQuerySchema,
+  playRequestSchema,
+  type ItemRef,
+} from '@shared/contracts/library'
+import type { LibraryQueryRepository } from '../database/repositories/library-query-repository'
+import type { HistoryRepository } from '../database/repositories/history-repository'
 import { handle } from './handle'
 
 export interface IpcDependencies {
@@ -18,9 +26,24 @@ export interface IpcDependencies {
   startupStatus: StartupStatus
   player: PlayerController
   library: LibraryService
+  libraryQuery: LibraryQueryRepository
+  historyRepository: HistoryRepository
+  onLibraryChanged: () => void
 }
 
 const folderId = z.number().int().positive()
+const fileId = z.number().int().positive()
+const searchText = z.string().trim().max(200)
+
+/** Resolves a renderer reference to a known path: a library file or an existing history entry. */
+function resolveItem(
+  deps: IpcDependencies,
+  ref: ItemRef,
+): { path: string; pathKey: string } | undefined {
+  if ('fileId' in ref) return deps.libraryQuery.getFile(ref.fileId)
+  const path = deps.libraryQuery.getHistoryPath(ref.historyKey)
+  return path ? { path, pathKey: ref.historyKey } : undefined
+}
 
 async function pickAndPlay(
   player: PlayerController,
@@ -119,5 +142,40 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
     // Scans run in the background; progress arrives through LibraryScanProgress.
     if (args.length === 0) void deps.library.scanAll()
     else void deps.library.scan(args[0])
+  })
+
+  handle(IpcChannel.LibraryQuery, z.tuple([libraryQuerySchema]), ([query]) =>
+    deps.libraryQuery.query(query),
+  )
+  handle(IpcChannel.LibraryListShows, z.union([z.tuple([]), z.tuple([searchText])]), (args) =>
+    deps.libraryQuery.listShows(args[0] || undefined),
+  )
+  handle(IpcChannel.LibraryListResolutions, noArgs, () => deps.libraryQuery.listResolutions())
+  handle(IpcChannel.LibraryPlay, z.tuple([playRequestSchema]), async ([request]) => {
+    // Paths come from the database, never from the renderer.
+    const paths = request.items
+      .map((ref) => resolveItem(deps, ref)?.path)
+      .filter((p): p is string => p !== undefined)
+    const start = Math.min(request.startIndex ?? 0, Math.max(0, paths.length - 1))
+    return deps.player.openPaths([...paths.slice(start), ...paths.slice(0, start)])
+  })
+  handle(IpcChannel.LibrarySetFavorite, z.tuple([fileId, z.boolean()]), ([id, favorite]) => {
+    if (deps.libraryQuery.setFavorite(id, favorite)) deps.onLibraryChanged()
+  })
+  handle(IpcChannel.LibraryShowInFolder, z.tuple([fileId]), ([id]) => {
+    const file = deps.libraryQuery.getFile(id)
+    if (file) shell.showItemInFolder(file.path)
+  })
+  handle(IpcChannel.HistorySetWatched, z.tuple([itemRefSchema, z.boolean()]), ([ref, watched]) => {
+    const item = resolveItem(deps, ref)
+    if (!item) return
+    deps.historyRepository.setWatched(item.pathKey, item.path, watched, new Date().toISOString())
+    deps.onLibraryChanged()
+  })
+  handle(IpcChannel.HistoryRemove, z.tuple([itemRefSchema]), ([ref]) => {
+    const item = resolveItem(deps, ref)
+    if (!item) return
+    deps.historyRepository.delete(item.pathKey)
+    deps.onLibraryChanged()
   })
 }

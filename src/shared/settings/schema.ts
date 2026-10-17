@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { defaultVideoExtensions } from '../constants/media'
+import { sortKeys } from '../contracts/library'
 
 export const playbackSettingsSchema = z.object({
   resumePlayback: z.boolean(),
@@ -28,9 +29,24 @@ export const librarySettingsSchema = z.object({
     .max(64),
 })
 
+export const viewPreferenceSchema = z.object({
+  mode: z.enum(['grid', 'list']),
+  sort: z.enum(sortKeys),
+  direction: z.enum(['asc', 'desc']),
+})
+export type ViewPreference = z.infer<typeof viewPreferenceSchema>
+
+export const uiSettingsSchema = z.object({
+  /** Per-view layout and sort, keyed by view id (e.g. "movies"). */
+  viewPreferences: z
+    .record(z.string().regex(/^[a-z-]{1,40}$/), viewPreferenceSchema)
+    .refine((prefs) => Object.keys(prefs).length <= 50, 'Too many view preferences'),
+})
+
 export const appSettingsSchema = z.object({
   playback: playbackSettingsSchema,
   library: librarySettingsSchema,
+  ui: uiSettingsSchema,
   appearance: appearanceSettingsSchema,
   privacy: privacySettingsSchema,
 })
@@ -49,6 +65,7 @@ export const defaultSettings: AppSettings = {
     hardwareDecoding: 'auto-safe',
   },
   library: { videoExtensions: [...defaultVideoExtensions] },
+  ui: { viewPreferences: {} },
   appearance: { themeId: 'midnight-cinema' },
   privacy: { onlineMetadataEnabled: true, onlineSubtitlesEnabled: true },
 }
@@ -58,6 +75,7 @@ export const settingsPatchSchema = z
   .object({
     playback: playbackSettingsSchema.partial().strict().optional(),
     library: librarySettingsSchema.partial().strict().optional(),
+    ui: uiSettingsSchema.partial().strict().optional(),
     appearance: appearanceSettingsSchema.partial().strict().optional(),
     privacy: privacySettingsSchema.partial().strict().optional(),
   })

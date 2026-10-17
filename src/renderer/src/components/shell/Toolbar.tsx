@@ -1,6 +1,11 @@
-import { Search } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 
-export function Toolbar() {
+interface ToolbarProps {
+  search: string
+  onSearchChange: (value: string) => void
+}
+
+export function Toolbar({ search, onSearchChange }: ToolbarProps) {
   return (
     <header className="flex h-[var(--frame-toolbar-height)] shrink-0 items-center gap-3 border-b border-border px-5">
       <label className="flex w-full max-w-md items-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-muted focus-within:border-accent">
@@ -8,9 +13,25 @@ export function Toolbar() {
         <span className="sr-only">Search library</span>
         <input
           type="search"
-          placeholder="Search your library"
-          className="w-full bg-transparent text-text placeholder:text-subtle focus:outline-none"
+          value={search}
+          onChange={(e) => onSearchChange(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') onSearchChange('')
+          }}
+          placeholder="Search titles, episodes, and file names"
+          className="w-full bg-transparent text-text placeholder:text-subtle focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+          dir="auto"
         />
+        {search && (
+          <button
+            type="button"
+            aria-label="Clear search"
+            onClick={() => onSearchChange('')}
+            className="rounded p-0.5 hover:text-text"
+          >
+            <X size={14} />
+          </button>
+        )}
       </label>
     </header>
   )

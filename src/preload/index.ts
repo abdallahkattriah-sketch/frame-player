@@ -43,6 +43,21 @@ const api: FrameApi = {
         ? ipcRenderer.invoke(IpcChannel.LibraryRescan)
         : ipcRenderer.invoke(IpcChannel.LibraryRescan, id),
     onScanProgress: (listener) => subscribe<ScanProgress>(IpcChannel.LibraryScanProgress, listener),
+    query: (query) => ipcRenderer.invoke(IpcChannel.LibraryQuery, query),
+    listShows: (search) =>
+      search === undefined
+        ? ipcRenderer.invoke(IpcChannel.LibraryListShows)
+        : ipcRenderer.invoke(IpcChannel.LibraryListShows, search),
+    listResolutions: () => ipcRenderer.invoke(IpcChannel.LibraryListResolutions),
+    play: (request) => ipcRenderer.invoke(IpcChannel.LibraryPlay, request),
+    setFavorite: (fileId, favorite) =>
+      ipcRenderer.invoke(IpcChannel.LibrarySetFavorite, fileId, favorite),
+    showInFolder: (fileId) => ipcRenderer.invoke(IpcChannel.LibraryShowInFolder, fileId),
+    onChanged: (listener) => subscribe<null>(IpcChannel.LibraryChanged, () => listener()),
+  },
+  history: {
+    setWatched: (item, watched) => ipcRenderer.invoke(IpcChannel.HistorySetWatched, item, watched),
+    remove: (item) => ipcRenderer.invoke(IpcChannel.HistoryRemove, item),
   },
 }
 

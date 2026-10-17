@@ -20,9 +20,18 @@ export const IpcChannel = {
   LibraryRemoveFolder: 'library:remove-folder',
   LibraryUpdateFolder: 'library:update-folder',
   LibraryRescan: 'library:rescan',
+  LibraryQuery: 'library:query',
+  LibraryListShows: 'library:list-shows',
+  LibraryListResolutions: 'library:list-resolutions',
+  LibraryPlay: 'library:play',
+  LibrarySetFavorite: 'library:set-favorite',
+  LibraryShowInFolder: 'library:show-in-folder',
+  HistorySetWatched: 'history:set-watched',
+  HistoryRemove: 'history:remove',
   /** Main → renderer pushes. */
   PlayerStateChanged: 'player:state-changed',
   LibraryScanProgress: 'library:scan-progress',
+  LibraryChanged: 'library:changed',
 } as const
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel]

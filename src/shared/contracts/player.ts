@@ -127,6 +127,8 @@ export const playerCommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('toggle-mute') }),
   z.object({ type: z.literal('stop') }),
   z.object({ type: z.literal('toggle-fullscreen') }),
+  /** Brings the player window to the front. */
+  z.object({ type: z.literal('show-player') }),
   z.object({
     type: z.literal('set-speed'),
     speed: z.number().finite().min(MIN_SPEED).max(MAX_SPEED),

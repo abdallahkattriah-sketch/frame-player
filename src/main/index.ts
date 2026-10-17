@@ -68,7 +68,11 @@ if (!app.requestSingleInstanceLock()) {
     const paths = resolveAppPaths()
     try {
       services = bootstrapServices(paths, {
-        onScanProgress: (progress) => broadcast(IpcChannel.LibraryScanProgress, progress),
+        onScanProgress: (progress) => {
+          broadcast(IpcChannel.LibraryScanProgress, progress)
+          if (progress.status !== 'scanning') notifyLibraryChanged()
+        },
+        onLibraryChanged: () => notifyLibraryChanged(),
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -97,9 +101,13 @@ if (!app.requestSingleInstanceLock()) {
         }
       },
       screenshotDir: () => paths.screenshots,
+      publishState: (state) => broadcast(IpcChannel.PlayerStateChanged, state),
+      onStateChange: (state) => services?.history.onPlayerState(state),
+      onSessionEnded: (last) => services?.history.onSessionEnded(last),
+      resumeFor: (path) => services?.history.resumeFor(path) ?? null,
     })
 
-    registerIpcHandlers({ ...services, player })
+    registerIpcHandlers({ ...services, player, onLibraryChanged: notifyLibraryChanged })
     createMainWindow()
     openFromArgv(process.argv, process.cwd())
 
@@ -136,6 +144,13 @@ if (!app.requestSingleInstanceLock()) {
     services?.db.close()
     services = undefined
   })
+}
+
+/** Coalesces bursts of changes into one refresh signal for renderer views. */
+let libraryChangedTimer: NodeJS.Timeout | undefined
+function notifyLibraryChanged() {
+  clearTimeout(libraryChangedTimer)
+  libraryChangedTimer = setTimeout(() => broadcast(IpcChannel.LibraryChanged, null), 150)
 }
 
 function broadcast(channel: string, payload: unknown) {
