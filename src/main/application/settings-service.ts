@@ -27,11 +27,11 @@ export class SettingsService {
 
   update(patch: SettingsPatch): AppSettings {
     const current = this.get()
-    const next = appSettingsSchema.parse({
-      playback: { ...current.playback, ...patch.playback },
-      appearance: { ...current.appearance, ...patch.appearance },
-      privacy: { ...current.privacy, ...patch.privacy },
-    })
+    const next = appSettingsSchema.parse(
+      Object.fromEntries(
+        settingsSections.map((section) => [section, { ...current[section], ...patch[section] }]),
+      ),
+    )
     for (const section of settingsSections) {
       if (patch[section]) this.repository.upsert(section, JSON.stringify(next[section]))
     }

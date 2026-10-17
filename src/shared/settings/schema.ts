@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { defaultVideoExtensions } from '../constants/media'
 
 export const playbackSettingsSchema = z.object({
   resumePlayback: z.boolean(),
@@ -19,8 +20,17 @@ export const privacySettingsSchema = z.object({
   onlineSubtitlesEnabled: z.boolean(),
 })
 
+export const librarySettingsSchema = z.object({
+  /** Lowercase file extensions without the dot. */
+  videoExtensions: z
+    .array(z.string().regex(/^[a-z0-9]{1,8}$/, 'Use letters and digits only, without a dot'))
+    .min(1)
+    .max(64),
+})
+
 export const appSettingsSchema = z.object({
   playback: playbackSettingsSchema,
+  library: librarySettingsSchema,
   appearance: appearanceSettingsSchema,
   privacy: privacySettingsSchema,
 })
@@ -38,6 +48,7 @@ export const defaultSettings: AppSettings = {
     defaultVolume: 80,
     hardwareDecoding: 'auto-safe',
   },
+  library: { videoExtensions: [...defaultVideoExtensions] },
   appearance: { themeId: 'midnight-cinema' },
   privacy: { onlineMetadataEnabled: true, onlineSubtitlesEnabled: true },
 }
@@ -46,6 +57,7 @@ export const defaultSettings: AppSettings = {
 export const settingsPatchSchema = z
   .object({
     playback: playbackSettingsSchema.partial().strict().optional(),
+    library: librarySettingsSchema.partial().strict().optional(),
     appearance: appearanceSettingsSchema.partial().strict().optional(),
     privacy: privacySettingsSchema.partial().strict().optional(),
   })

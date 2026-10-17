@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { AppSettings, SettingsPatch } from '../settings/schema'
 import type { CredentialId, CredentialStoreStatus } from './credentials'
 import type { OpenMediaResult, PlayerCommand, PlayerState, ScreenshotResult } from './player'
+import type { AddFolderResult, FolderOptions, LibraryFolder, ScanProgress } from './library'
 
 export { IpcChannel, type IpcChannelName } from './channels'
 
@@ -45,5 +46,16 @@ export interface FrameApi {
     screenshot: () => Promise<ScreenshotResult>
     /** Subscribes to state pushed from mpv; returns an unsubscribe function. */
     onState: (listener: (state: PlayerState) => void) => () => void
+  }
+  library: {
+    listFolders: () => Promise<LibraryFolder[]>
+    /** Native folder picker in the main process; the chosen folder is added and scanned. */
+    addFolderDialog: () => Promise<AddFolderResult | null>
+    /** Forgets the folder and its records. Files on disk are never deleted. */
+    removeFolder: (id: number) => Promise<void>
+    updateFolder: (id: number, options: FolderOptions) => Promise<LibraryFolder | null>
+    /** Rescans one folder, or all folders when `id` is omitted. */
+    rescan: (id?: number) => Promise<void>
+    onScanProgress: (listener: (progress: ScanProgress) => void) => () => void
   }
 }

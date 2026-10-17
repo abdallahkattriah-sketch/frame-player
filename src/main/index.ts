@@ -8,6 +8,7 @@ import { PlayerController } from './application/player-controller'
 import { resolveMpvPath } from './media-engine/mpv-locator'
 import { raiseVideoWindow } from './media-engine/video-window-order'
 import { extractMediaPaths } from './filesystem/launch-args'
+import { IpcChannel } from '@shared/contracts/channels'
 
 const devServerUrl = app.isPackaged ? undefined : process.env['ELECTRON_RENDERER_URL']
 const preloadPath = join(__dirname, '../preload/index.js')
@@ -66,7 +67,9 @@ if (!app.requestSingleInstanceLock()) {
 
     const paths = resolveAppPaths()
     try {
-      services = bootstrapServices(paths)
+      services = bootstrapServices(paths, {
+        onScanProgress: (progress) => broadcast(IpcChannel.LibraryScanProgress, progress),
+      })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       dialog.showErrorBox('Frame could not start', message)
@@ -100,6 +103,12 @@ if (!app.requestSingleInstanceLock()) {
     createMainWindow()
     openFromArgv(process.argv, process.cwd())
 
+    // Folders with automatic rescanning are refreshed on startup and then watched.
+    for (const folder of services.library.listFolders()) {
+      if (folder.autoRescan) void services.library.scan(folder.id)
+    }
+    services.library.startWatchers()
+
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createMainWindow()
     })
@@ -109,9 +118,28 @@ if (!app.requestSingleInstanceLock()) {
     if (process.platform !== 'darwin') app.quit()
   })
 
+  // Background scans write to the database; stop them before it closes.
+  let backgroundWorkStopped = false
+  app.on('before-quit', (event) => {
+    if (backgroundWorkStopped || !services) return
+    event.preventDefault()
+    const stop = services.library.dispose()
+    const timeout = new Promise((r) => setTimeout(r, 3000))
+    void Promise.race([stop, timeout]).finally(() => {
+      backgroundWorkStopped = true
+      app.quit()
+    })
+  })
+
   app.on('will-quit', () => {
     player?.disposeNow()
     services?.db.close()
     services = undefined
   })
+}
+
+function broadcast(channel: string, payload: unknown) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send(channel, payload)
+  }
 }

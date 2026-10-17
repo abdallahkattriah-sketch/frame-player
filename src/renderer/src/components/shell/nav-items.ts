@@ -1,6 +1,7 @@
-import { Clapperboard, Clock, Film, Home, Settings, Tv, type LucideIcon } from 'lucide-react'
+import { Home, Settings, type LucideIcon } from 'lucide-react'
 
-export type NavItemId = 'home' | 'movies' | 'shows' | 'history' | 'player' | 'settings'
+// Only views that exist are listed; library views are added as they are built.
+export type NavItemId = 'home' | 'settings'
 
 export interface NavItem {
   id: NavItemId
@@ -8,13 +9,7 @@ export interface NavItem {
   icon: LucideIcon
 }
 
-export const primaryNavItems: readonly NavItem[] = [
-  { id: 'home', label: 'Home', icon: Home },
-  { id: 'movies', label: 'Movies', icon: Film },
-  { id: 'shows', label: 'TV Shows', icon: Tv },
-  { id: 'history', label: 'History', icon: Clock },
-  { id: 'player', label: 'Player', icon: Clapperboard },
-]
+export const primaryNavItems: readonly NavItem[] = [{ id: 'home', label: 'Home', icon: Home }]
 
 export const secondaryNavItems: readonly NavItem[] = [
   { id: 'settings', label: 'Settings', icon: Settings },

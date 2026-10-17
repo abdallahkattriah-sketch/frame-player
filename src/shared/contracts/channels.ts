@@ -15,8 +15,14 @@ export const IpcChannel = {
   PlayerGetState: 'player:get-state',
   PlayerCommand: 'player:command',
   PlayerScreenshot: 'player:screenshot',
-  /** Main → renderer push. */
+  LibraryListFolders: 'library:list-folders',
+  LibraryAddFolderDialog: 'library:add-folder-dialog',
+  LibraryRemoveFolder: 'library:remove-folder',
+  LibraryUpdateFolder: 'library:update-folder',
+  LibraryRescan: 'library:rescan',
+  /** Main → renderer pushes. */
   PlayerStateChanged: 'player:state-changed',
+  LibraryScanProgress: 'library:scan-progress',
 } as const
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel]

@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'ele
 import { IpcChannel } from '@shared/contracts/channels'
 import type { FrameApi } from '@shared/contracts/ipc'
 import type { PlayerState } from '@shared/contracts/player'
+import type { ScanProgress } from '@shared/contracts/library'
 
 const api: FrameApi = {
   app: {
@@ -30,15 +31,28 @@ const api: FrameApi = {
     getState: () => ipcRenderer.invoke(IpcChannel.PlayerGetState),
     command: (command) => ipcRenderer.invoke(IpcChannel.PlayerCommand, command),
     screenshot: () => ipcRenderer.invoke(IpcChannel.PlayerScreenshot),
-    onState: (listener) => {
-      // Never hand the IpcRendererEvent (and its sender) to page code.
-      const wrapped = (_event: IpcRendererEvent, state: PlayerState) => listener(state)
-      ipcRenderer.on(IpcChannel.PlayerStateChanged, wrapped)
-      return () => {
-        ipcRenderer.removeListener(IpcChannel.PlayerStateChanged, wrapped)
-      }
-    },
+    onState: (listener) => subscribe<PlayerState>(IpcChannel.PlayerStateChanged, listener),
   },
+  library: {
+    listFolders: () => ipcRenderer.invoke(IpcChannel.LibraryListFolders),
+    addFolderDialog: () => ipcRenderer.invoke(IpcChannel.LibraryAddFolderDialog),
+    removeFolder: (id) => ipcRenderer.invoke(IpcChannel.LibraryRemoveFolder, id),
+    updateFolder: (id, options) => ipcRenderer.invoke(IpcChannel.LibraryUpdateFolder, id, options),
+    rescan: (id) =>
+      id === undefined
+        ? ipcRenderer.invoke(IpcChannel.LibraryRescan)
+        : ipcRenderer.invoke(IpcChannel.LibraryRescan, id),
+    onScanProgress: (listener) => subscribe<ScanProgress>(IpcChannel.LibraryScanProgress, listener),
+  },
+}
+
+/** Subscribes to a main → renderer push without exposing the IpcRendererEvent to page code. */
+function subscribe<T>(channel: string, listener: (payload: T) => void): () => void {
+  const wrapped = (_event: IpcRendererEvent, payload: T) => listener(payload)
+  ipcRenderer.on(channel, wrapped)
+  return () => {
+    ipcRenderer.removeListener(channel, wrapped)
+  }
 }
 
 contextBridge.exposeInMainWorld('frame', api)
