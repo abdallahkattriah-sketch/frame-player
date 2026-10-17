@@ -178,6 +178,23 @@ export const migrations: readonly Migration[] = [
       ) STRICT;
     `,
   },
+  {
+    version: 5,
+    name: 'bookmarks',
+    sql: `
+      -- Scene bookmarks, keyed like playback history so they survive rescans and metadata changes.
+      CREATE TABLE bookmarks (
+        id               INTEGER PRIMARY KEY,
+        path_key         TEXT NOT NULL,
+        path             TEXT NOT NULL,
+        position_seconds REAL NOT NULL CHECK (position_seconds >= 0),
+        title            TEXT,
+        note             TEXT,
+        created_at       TEXT NOT NULL
+      ) STRICT;
+      CREATE INDEX bookmarks_path ON bookmarks (path_key, position_seconds);
+    `,
+  },
 ]
 
 export const latestSchemaVersion = migrations.reduce((max, m) => Math.max(max, m.version), 0)

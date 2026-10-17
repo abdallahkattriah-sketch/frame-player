@@ -79,10 +79,12 @@ export function AudioSubtitleMenu({
   state,
   onSearchOnline,
   onLoadFile,
+  onOpenStyle,
 }: {
   state: PlayerState
   onSearchOnline?: () => void
   onLoadFile?: () => void
+  onOpenStyle?: () => void
 }) {
   const audio = state.tracks.filter((t) => t.type === 'audio')
   const subs = state.tracks.filter((t) => t.type === 'sub')
@@ -138,6 +140,17 @@ export function AudioSubtitleMenu({
                   Load file…
                 </button>
               )}
+            </div>
+          )}
+          {onOpenStyle && (
+            <div className="mt-1 px-1">
+              <button
+                type="button"
+                onClick={onOpenStyle}
+                className="w-full rounded-md border border-border px-2 py-1.5 hover:bg-elevated"
+              >
+                Subtitle style…
+              </button>
             </div>
           )}
         </MenuSection>

@@ -33,6 +33,7 @@ const api: FrameApi = {
     getState: () => ipcRenderer.invoke(IpcChannel.PlayerGetState),
     command: (command) => ipcRenderer.invoke(IpcChannel.PlayerCommand, command),
     screenshot: () => ipcRenderer.invoke(IpcChannel.PlayerScreenshot),
+    previewAt: (seconds) => ipcRenderer.invoke(IpcChannel.PlayerPreview, seconds),
     onState: (listener) => subscribe<PlayerState>(IpcChannel.PlayerStateChanged, listener),
   },
   library: {
@@ -73,6 +74,13 @@ const api: FrameApi = {
     reidentify: (target) => ipcRenderer.invoke(IpcChannel.MetadataReidentify, target),
     item: (target) => ipcRenderer.invoke(IpcChannel.MetadataItem, target),
     onStatus: (listener) => subscribe<MetadataStatus>(IpcChannel.MetadataStatusChanged, listener),
+  },
+  bookmarks: {
+    list: () => ipcRenderer.invoke(IpcChannel.BookmarksList),
+    add: () => ipcRenderer.invoke(IpcChannel.BookmarksAdd),
+    edit: (id, edit) => ipcRenderer.invoke(IpcChannel.BookmarksEdit, id, edit),
+    remove: (id) => ipcRenderer.invoke(IpcChannel.BookmarksRemove, id),
+    onChanged: (listener) => subscribe<null>(IpcChannel.BookmarksChanged, () => listener()),
   },
   subtitles: {
     providers: () => ipcRenderer.invoke(IpcChannel.SubtitleProviders),

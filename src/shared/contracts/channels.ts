@@ -15,6 +15,11 @@ export const IpcChannel = {
   PlayerGetState: 'player:get-state',
   PlayerCommand: 'player:command',
   PlayerScreenshot: 'player:screenshot',
+  PlayerPreview: 'player:preview',
+  BookmarksList: 'bookmarks:list',
+  BookmarksAdd: 'bookmarks:add',
+  BookmarksEdit: 'bookmarks:edit',
+  BookmarksRemove: 'bookmarks:remove',
   LibraryListFolders: 'library:list-folders',
   LibraryAddFolderDialog: 'library:add-folder-dialog',
   LibraryRemoveFolder: 'library:remove-folder',
@@ -50,6 +55,7 @@ export const IpcChannel = {
   LibraryChanged: 'library:changed',
   MetadataStatusChanged: 'metadata:status-changed',
   SubtitleProvidersChanged: 'subtitles:providers-changed',
+  BookmarksChanged: 'bookmarks:changed',
 } as const
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel]

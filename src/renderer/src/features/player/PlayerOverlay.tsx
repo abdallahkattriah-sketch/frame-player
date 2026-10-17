@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  Bookmark as BookmarkIcon,
   Camera,
   Info,
   ListVideo,
@@ -19,6 +20,10 @@ import { InfoPanel } from './InfoPanel'
 import { AudioSubtitleMenu, SpeedMenu, VideoMenu } from './menus'
 import { isOverlayAction, keyToAction, type OverlayAction } from './player-keymap'
 import { PlaylistPanel } from './PlaylistPanel'
+import { BookmarksPanel } from './BookmarksPanel'
+import { chapterAt, Timeline } from './Timeline'
+import { useBookmarks } from './use-bookmarks'
+import { SubtitleStylePanel } from './SubtitleStylePanel'
 import { sendCommand } from './send-command'
 import { useFileDrop } from './use-file-drop'
 import { useIdle } from './use-idle'
@@ -56,12 +61,15 @@ export function PlayerOverlay() {
   const idle = useIdle(2500)
   const [showInfo, setShowInfo] = useState(false)
   const [showPlaylist, setShowPlaylist] = useState(false)
+  const [showBookmarks, setShowBookmarks] = useState(false)
+  const [showStyle, setShowStyle] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [showSubtitleSearch, setShowSubtitleSearch] = useState(false)
   const [seekStep, setSeekStep] = useState(defaultSettings.playback.seekStepSeconds)
   const toastTimer = useRef<number | undefined>(undefined)
 
-  const panelOpen = showInfo || showPlaylist
+  const bookmarks = useBookmarks(state.path)
+  const panelOpen = showInfo || showPlaylist || showBookmarks || showStyle
   const controlsHidden = idle && !state.paused && state.status === 'ready' && !panelOpen
 
   const notify = useCallback((message: string) => {
@@ -69,6 +77,15 @@ export function PlayerOverlay() {
     window.clearTimeout(toastTimer.current)
     toastTimer.current = window.setTimeout(() => setToast(null), TOAST_MS)
   }, [])
+
+  const addBookmark = useCallback(() => {
+    bookmarks
+      .add()
+      .then((added) => {
+        if (added) notify(`Bookmark added at ${formatTime(added.position)}`)
+      })
+      .catch(() => notify('Could not add the bookmark.'))
+  }, [bookmarks, notify])
 
   useEffect(() => {
     window.frame.settings
@@ -93,15 +110,27 @@ export function PlayerOverlay() {
           setShowInfo((v) => !v)
           return
         case 'toggle-playlist':
+          setShowBookmarks(false)
+          setShowStyle(false)
           setShowPlaylist((v) => !v)
+          return
+        case 'toggle-bookmarks':
+          setShowPlaylist(false)
+          setShowStyle(false)
+          setShowBookmarks((v) => !v)
+          return
+        case 'add-bookmark':
+          addBookmark()
           return
         case 'close-panels':
           setShowInfo(false)
           setShowPlaylist(false)
+          setShowBookmarks(false)
+          setShowStyle(false)
           return
       }
     },
-    [notify],
+    [notify, addBookmark],
   )
 
   useEffect(() => {
@@ -124,8 +153,7 @@ export function PlayerOverlay() {
     if (result.error) notify(result.error)
   })
 
-  const duration = state.duration ?? 0
-  const position = state.position ?? 0
+  const currentChapter = chapterAt(state.chapters, state.position ?? 0)
   const hasPlaylist = state.playlist.length > 1
 
   return (
@@ -159,6 +187,16 @@ export function PlayerOverlay() {
 
       {showInfo && <InfoPanel state={state} />}
       {showPlaylist && <PlaylistPanel state={state} onClose={() => setShowPlaylist(false)} />}
+      {showBookmarks && (
+        <BookmarksPanel
+          bookmarks={bookmarks.bookmarks}
+          onAdd={addBookmark}
+          onEdit={bookmarks.edit}
+          onRemove={(id) => void bookmarks.remove(id).catch(() => undefined)}
+          onClose={() => setShowBookmarks(false)}
+        />
+      )}
+      {showStyle && <SubtitleStylePanel onClose={() => setShowStyle(false)} />}
       {showSubtitleSearch && state.path && (
         <SubtitleSearchDialog
           target={{ current: true }}
@@ -188,24 +226,19 @@ export function PlayerOverlay() {
             <span className="min-w-0 flex-1 truncate" data-testid="player-title">
               {state.title ?? ''}
             </span>
+            {currentChapter?.title && (
+              <span className="max-w-[40%] truncate" data-testid="player-chapter">
+                {currentChapter.title}
+              </span>
+            )}
             {state.speed !== 1 && <span className="text-accent">{state.speed}×</span>}
           </div>
-          <input
-            type="range"
-            aria-label="Seek"
-            min={0}
-            max={duration || 0}
-            step={0.1}
-            value={Math.min(position, duration || 0)}
-            disabled={!state.duration}
-            onChange={(e) =>
-              sendCommand({
-                type: 'seek',
-                mode: 'absolute',
-                seconds: Number(e.currentTarget.value),
-              })
-            }
-            className="w-full accent-[var(--frame-accent)]"
+          <Timeline
+            duration={state.duration}
+            position={state.position}
+            chapters={state.chapters}
+            bookmarks={bookmarks.bookmarks}
+            onSeek={(seconds) => sendCommand({ type: 'seek', mode: 'absolute', seconds })}
           />
           <div className="mt-1 flex items-center gap-1">
             {hasPlaylist && (
@@ -251,6 +284,11 @@ export function PlayerOverlay() {
               <AudioSubtitleMenu
                 state={state}
                 onSearchOnline={() => setShowSubtitleSearch(true)}
+                onOpenStyle={() => {
+                  setShowPlaylist(false)
+                  setShowBookmarks(false)
+                  setShowStyle(true)
+                }}
                 onLoadFile={() => {
                   window.frame.subtitles
                     .loadFile()
@@ -270,9 +308,16 @@ export function PlayerOverlay() {
                 <Camera size={18} />
               </IconButton>
               <IconButton
+                label="Bookmarks"
+                pressed={showBookmarks}
+                onClick={() => runOverlayAction({ type: 'toggle-bookmarks' })}
+              >
+                <BookmarkIcon size={18} />
+              </IconButton>
+              <IconButton
                 label="Playlist"
                 pressed={showPlaylist}
-                onClick={() => setShowPlaylist((v) => !v)}
+                onClick={() => runOverlayAction({ type: 'toggle-playlist' })}
               >
                 <ListVideo size={18} />
               </IconButton>

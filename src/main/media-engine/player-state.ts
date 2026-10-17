@@ -1,5 +1,6 @@
 import type {
   AspectRatio,
+  Chapter,
   PlayerCommand,
   PlayerState,
   PlayerTrack,
@@ -38,6 +39,8 @@ export const observedProperties = [
   'audio-codec-name',
   'container-fps',
   'hwdec-current',
+  'chapter-list',
+  'chapter',
 ] as const
 
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
@@ -88,6 +91,18 @@ export function parsePlaylist(value: unknown): PlaylistItem[] {
     })
   }
   return items
+}
+
+export function parseChapters(value: unknown): Chapter[] {
+  if (!Array.isArray(value)) return []
+  const chapters: Chapter[] = []
+  for (const entry of value) {
+    if (!isRecord(entry)) continue
+    const time = num(entry['time'])
+    if (time === null || time < 0) continue
+    chapters.push({ title: str(entry['title']), time })
+  }
+  return chapters.sort((a, b) => a.time - b.time)
 }
 
 const aspectValues: Record<Exclude<AspectRatio, 'auto'>, number> = {
@@ -209,6 +224,12 @@ export function applyProperty(state: PlayerState, name: string, data: unknown): 
       return { ...state, videoInfo: { ...state.videoInfo, audioCodec: str(data) } }
     case 'container-fps':
       return { ...state, videoInfo: { ...state.videoInfo, fps: num(data) } }
+    case 'chapter-list':
+      return { ...state, chapters: parseChapters(data) }
+    case 'chapter': {
+      const index = num(data)
+      return { ...state, chapter: index !== null && index >= 0 ? index : null }
+    }
     case 'hwdec-current': {
       const hwdec = str(data)
       return { ...state, videoInfo: { ...state.videoInfo, hwdec: hwdec === 'no' ? null : hwdec } }
@@ -283,5 +304,7 @@ export function toMpvCommands(command: PlayerCommand): MpvCommand[] {
       return [['playlist-play-index', command.index]]
     case 'playlist-remove':
       return [['playlist-remove', command.index]]
+    case 'chapter':
+      return [['add', 'chapter', command.direction === 'next' ? 1 : -1]]
   }
 }

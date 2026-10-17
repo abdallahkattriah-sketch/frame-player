@@ -7,6 +7,7 @@ import {
   applyProperty,
   isLooping,
   parseAspect,
+  parseChapters,
   parsePlaylist,
   parseTracks,
   PlayerStateTracker,
@@ -122,6 +123,27 @@ describe('mpv value parsers', () => {
     expect(parseAspect(3.7)).toBe('auto')
   })
 
+  it('parses chapter lists in time order and drops invalid entries', () => {
+    expect(
+      parseChapters([
+        { title: 'Intro', time: 0 },
+        { title: '', time: 95.5 },
+        { title: 'Bad', time: 'x' },
+        { time: 30 },
+        null,
+      ]),
+    ).toEqual([
+      { title: 'Intro', time: 0 },
+      { title: null, time: 30 },
+      { title: null, time: 95.5 },
+    ])
+    expect(parseChapters(undefined)).toEqual([])
+    let s = applyProperty(initialPlayerState, 'chapter-list', [{ title: 'A', time: 0 }])
+    s = applyProperty(s, 'chapter', 0)
+    expect(s).toMatchObject({ chapters: [{ title: 'A', time: 0 }], chapter: 0 })
+    expect(applyProperty(s, 'chapter', -1).chapter).toBeNull()
+  })
+
   it('recognizes loop values', () => {
     expect([true, 'inf', 'force', 3].map(isLooping)).toEqual([true, true, true, true])
     expect([false, 'no', 0, undefined].map(isLooping)).toEqual([false, false, false, false])
@@ -153,6 +175,10 @@ describe('toMpvCommands', () => {
       ['set_property', 'panscan', 1],
     ])
     expect(toMpvCommands({ type: 'toggle-fullscreen' })).toEqual([])
+    expect(toMpvCommands({ type: 'chapter', direction: 'next' })).toEqual([['add', 'chapter', 1]])
+    expect(toMpvCommands({ type: 'chapter', direction: 'previous' })).toEqual([
+      ['add', 'chapter', -1],
+    ])
   })
 
   it('rejects raw, unknown, or out-of-range commands at the schema', () => {

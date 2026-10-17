@@ -18,6 +18,12 @@ export interface PlaylistItem {
   current: boolean
 }
 
+export interface Chapter {
+  title: string | null
+  /** Seconds from the start. */
+  time: number
+}
+
 export type RepeatMode = 'off' | 'one' | 'all'
 export type VideoScaling = 'fit' | 'fill' | 'stretch'
 
@@ -69,6 +75,10 @@ export interface PlayerState {
   aspectRatio: AspectRatio
   scaling: VideoScaling
   videoInfo: VideoInfo
+  /** From the file's chapter markers, in time order; empty when it has none. */
+  chapters: Chapter[]
+  /** Index into chapters, or null before the first one. */
+  chapter: number | null
   error: string | null
 }
 
@@ -103,6 +113,8 @@ export const initialPlayerState: PlayerState = {
     fps: null,
     hwdec: null,
   },
+  chapters: [],
+  chapter: null,
   error: null,
 }
 
@@ -147,6 +159,7 @@ export const playerCommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('playlist-previous') }),
   z.object({ type: z.literal('playlist-play'), index: z.number().int().min(0) }),
   z.object({ type: z.literal('playlist-remove'), index: z.number().int().min(0) }),
+  z.object({ type: z.literal('chapter'), direction: z.enum(['next', 'previous']) }),
 ])
 
 export type PlayerCommand = z.infer<typeof playerCommandSchema>

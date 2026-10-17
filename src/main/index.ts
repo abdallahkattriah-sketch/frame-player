@@ -10,6 +10,8 @@ import { PlayerController } from './application/player-controller'
 import { resolveMpvPath } from './media-engine/mpv-locator'
 import { raiseVideoWindow } from './media-engine/video-window-order'
 import { extractMediaPaths } from './filesystem/launch-args'
+import { subtitleStyleProperties } from './media-engine/subtitle-style-properties'
+import { activeSubtitleStyle, defaultSubtitleAppearance } from '@shared/settings/subtitle-style'
 import { IpcChannel } from '@shared/contracts/channels'
 
 const devServerUrl = app.isPackaged ? undefined : process.env['ELECTRON_RENDERER_URL']
@@ -18,6 +20,14 @@ const rendererHtml = join(__dirname, '../renderer/index.html')
 
 let services: AppServices | undefined
 let player: PlayerController | undefined
+
+const mpvPath = () =>
+  resolveMpvPath({
+    isPackaged: app.isPackaged,
+    resourcesPath: process.resourcesPath,
+    // Built main lives in <root>/out/main; app.getAppPath() depends on how Electron was launched.
+    appPath: join(__dirname, '../..'),
+  })
 
 function loadRoute(win: BrowserWindow, route: string): Promise<void> {
   return devServerUrl
@@ -86,10 +96,12 @@ if (!app.requestSingleInstanceLock()) {
           onLibraryChanged: () => notifyLibraryChanged(),
           onMetadataStatus: (status) => broadcast(IpcChannel.MetadataStatusChanged, status),
           onSubtitleStatus: (statuses) => broadcast(IpcChannel.SubtitleProvidersChanged, statuses),
+          onBookmarksChanged: () => broadcast(IpcChannel.BookmarksChanged, null),
         },
         devOverrides(),
         {
           currentPath: () => player?.getState().path ?? null,
+          mpvPath,
           addSubtitle: (video, sub, language) =>
             player?.addSubtitle(video, sub, language) ?? Promise.resolve(false),
         },
@@ -102,13 +114,7 @@ if (!app.requestSingleInstanceLock()) {
     }
 
     player = new PlayerController({
-      resolveMpvPath: () =>
-        resolveMpvPath({
-          isPackaged: app.isPackaged,
-          resourcesPath: process.resourcesPath,
-          // Built main lives in <root>/out/main; app.getAppPath() depends on how Electron was launched.
-          appPath: join(__dirname, '../..'),
-        }),
+      resolveMpvPath: mpvPath,
       preloadPath,
       loadOverlay: (win) => loadRoute(win, '/player'),
       devServerUrl,
@@ -127,6 +133,10 @@ if (!app.requestSingleInstanceLock()) {
       resumeFor: (path) => services?.history.resumeFor(path) ?? null,
       subtitleLanguages: () =>
         services?.settings.get().subtitles.preferredLanguages.join(',') ?? '',
+      subtitleStyle: () =>
+        subtitleStyleProperties(
+          activeSubtitleStyle(services?.settings.get().subtitleStyle ?? defaultSubtitleAppearance),
+        ),
       subtitlesFor: async (path) => {
         const prefs = services?.settings.get().subtitles
         if (!prefs?.autoLoadLocal) return []
@@ -140,7 +150,8 @@ if (!app.requestSingleInstanceLock()) {
     createMainWindow()
     openFromArgv(process.argv, process.cwd())
 
-    handleArtworkProtocol(services.artwork)
+    handleArtworkProtocol(services.artwork, services.thumbnails)
+    services.thumbnails.prune()
     // TMDB terms: cached content may not be kept longer than 6 months.
     const startedServices = services
     void startedServices.artwork.purgeExpired()
@@ -173,6 +184,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('before-quit', (event) => {
     if (backgroundWorkStopped || !services) return
     event.preventDefault()
+    services.thumbnails.cancelAll()
     const stop = Promise.all([
       services.library.dispose(),
       services.metadata.dispose(),

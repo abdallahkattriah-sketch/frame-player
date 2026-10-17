@@ -1,6 +1,11 @@
 import { z } from 'zod'
 import { defaultVideoExtensions } from '../constants/media'
 import { sortKeys } from '../contracts/library'
+import {
+  defaultSubtitleAppearance,
+  subtitleAppearanceBaseSchema,
+  subtitleAppearanceSchema,
+} from './subtitle-style'
 
 export const playbackSettingsSchema = z.object({
   resumePlayback: z.boolean(),
@@ -10,6 +15,8 @@ export const playbackSettingsSchema = z.object({
   defaultVolume: z.number().int().min(0).max(100),
   /** mpv --hwdec: auto-safe uses hardware decoding when known to be reliable. */
   hardwareDecoding: z.enum(['auto-safe', 'auto', 'no']),
+  /** Generate preview images when hovering the timeline. */
+  timelinePreviews: z.boolean(),
 })
 
 export const appearanceSettingsSchema = z.object({
@@ -71,6 +78,7 @@ export const appSettingsSchema = z.object({
   library: librarySettingsSchema,
   metadata: metadataSettingsSchema,
   subtitles: subtitleSettingsSchema,
+  subtitleStyle: subtitleAppearanceSchema,
   ui: uiSettingsSchema,
   appearance: appearanceSettingsSchema,
   privacy: privacySettingsSchema,
@@ -88,6 +96,7 @@ export const defaultSettings: AppSettings = {
     completionThresholdPercent: 90,
     defaultVolume: 80,
     hardwareDecoding: 'auto-safe',
+    timelinePreviews: true,
   },
   library: { videoExtensions: [...defaultVideoExtensions] },
   metadata: { language: 'en-US', autoIdentify: true },
@@ -100,6 +109,7 @@ export const defaultSettings: AppSettings = {
     folder: null,
     providers: { opensubtitles: true, subsource: true },
   },
+  subtitleStyle: defaultSubtitleAppearance,
   ui: { viewPreferences: {} },
   appearance: { themeId: 'midnight-cinema' },
   privacy: { onlineMetadataEnabled: true, onlineSubtitlesEnabled: true },
@@ -114,6 +124,7 @@ export const settingsPatchSchema = z
     metadata: metadataSettingsSchema.partial().strict().optional(),
     // The folder is chosen with a native picker in the main process, never sent from the UI.
     subtitles: subtitleSettingsSchema.omit({ folder: true }).partial().strict().optional(),
+    subtitleStyle: subtitleAppearanceBaseSchema.partial().strict().optional(),
     appearance: appearanceSettingsSchema.partial().strict().optional(),
     privacy: privacySettingsSchema.partial().strict().optional(),
   })

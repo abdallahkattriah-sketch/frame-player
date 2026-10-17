@@ -63,6 +63,13 @@ describe('keyToAction', () => {
     expect(keyToAction(key('Escape'), ctx())).toBeNull()
   })
 
+  it('jumps between chapters and handles bookmark keys in the overlay', () => {
+    expect(keyToAction(key('PageDown'), ctx())).toEqual({ type: 'chapter', direction: 'next' })
+    expect(keyToAction(key('PageUp'), ctx())).toEqual({ type: 'chapter', direction: 'previous' })
+    expect(keyToAction(key('b'), ctx())).toEqual({ type: 'add-bookmark' })
+    expect(keyToAction(key('B', { shiftKey: true }), ctx())).toEqual({ type: 'toggle-bookmarks' })
+  })
+
   it('ignores keys with Ctrl or Alt and unknown keys', () => {
     expect(keyToAction(key('k', { ctrlKey: true }), ctx())).toBeNull()
     expect(keyToAction(key('q'), ctx())).toBeNull()

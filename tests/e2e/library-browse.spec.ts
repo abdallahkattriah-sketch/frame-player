@@ -94,10 +94,17 @@ test('browse, play, remember progress, resume after restart, and manage items', 
     await waitPlayer(player, (s) => s.status === 'ready', 'movie playing')
     await expect(page.getByTestId('mini-player')).toContainText('Test Pattern (2024).mkv')
 
-    await player.evaluate(() => window.frame.player.command({ type: 'set-speed', speed: 4 }))
-    await waitPlayer(player, (s) => (s.position ?? 0) >= 7, 'reached 7 s')
-    await player.evaluate(() => window.frame.player.command({ type: 'set-pause', paused: true }))
-    await waitPlayer(player, (s) => s.paused, 'paused')
+    // An exact seek while paused: playing fast and pausing later could overshoot past the
+    // "watched" threshold of this 12-second clip, which removes it from Continue Watching.
+    await player.evaluate(async () => {
+      await window.frame.player.command({ type: 'set-pause', paused: true })
+      await window.frame.player.command({ type: 'seek', mode: 'absolute', seconds: 7 })
+    })
+    await waitPlayer(
+      player,
+      (s) => s.paused && Math.abs((s.position ?? 0) - 7) < 0.5,
+      'paused at 7 s',
+    )
     const saved = (await playerState(player)).position ?? 0
 
     await closePlayer(app)

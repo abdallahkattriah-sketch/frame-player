@@ -30,6 +30,9 @@ import { SUBTITLE_EXTENSIONS } from '../subtitles/subtitle-content'
 import { parseSubtitleName } from '../subtitles/local-discovery'
 import { basename, dirname, extname } from 'node:path'
 import { handle } from './handle'
+import type { BookmarkService } from '../application/bookmark-service'
+import type { ThumbnailService } from '../media-engine/thumbnail-service'
+import { bookmarkEditSchema, bookmarkIdSchema } from '@shared/contracts/bookmarks'
 
 export interface IpcDependencies {
   settings: SettingsService
@@ -41,6 +44,8 @@ export interface IpcDependencies {
   historyRepository: HistoryRepository
   metadata: MetadataService
   subtitles: SubtitleService
+  thumbnails: ThumbnailService
+  bookmarks: BookmarkService
   onLibraryChanged: () => void
 }
 
@@ -100,9 +105,12 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
   handle(IpcChannel.AppGetStartupStatus, noArgs, () => deps.startupStatus)
 
   handle(IpcChannel.SettingsGet, noArgs, () => deps.settings.get())
-  handle(IpcChannel.SettingsUpdate, z.tuple([settingsPatchSchema]), ([patch]) =>
-    deps.settings.update(patch),
-  )
+  handle(IpcChannel.SettingsUpdate, z.tuple([settingsPatchSchema]), ([patch]) => {
+    const updated = deps.settings.update(patch)
+    // Subtitle style edits show on the playing video right away.
+    if (patch.subtitleStyle) void deps.player.applySubtitleStyle()
+    return updated
+  })
 
   handle(IpcChannel.CredentialsStatus, noArgs, () => deps.credentials.status())
   handle(
@@ -131,6 +139,32 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
     deps.player.command(command),
   )
   handle(IpcChannel.PlayerScreenshot, noArgs, () => deps.player.screenshot())
+  // Always the video that is playing; the renderer only chooses the position.
+  handle(IpcChannel.PlayerPreview, z.tuple([z.number().finite().min(0)]), async ([seconds]) => {
+    const { path, duration } = deps.player.getState()
+    if (!path || !duration || !deps.settings.get().playback.timelinePreviews) return null
+    const name = await deps.thumbnails.preview(path, duration, seconds)
+    return name ? `frame-art://thumb/${name}` : null
+  })
+
+  handle(IpcChannel.BookmarksList, noArgs, () => {
+    const path = deps.player.getState().path
+    return path ? deps.bookmarks.list(path) : []
+  })
+  handle(IpcChannel.BookmarksAdd, noArgs, async () => {
+    const { path, position } = deps.player.getState()
+    return path ? deps.bookmarks.add(path, position ?? 0) : null
+  })
+  handle(
+    IpcChannel.BookmarksEdit,
+    z.tuple([bookmarkIdSchema, bookmarkEditSchema]),
+    ([id, edit]) => {
+      deps.bookmarks.edit(id, edit)
+    },
+  )
+  handle(IpcChannel.BookmarksRemove, z.tuple([bookmarkIdSchema]), ([id]) => {
+    deps.bookmarks.remove(id)
+  })
 
   handle(IpcChannel.LibraryListFolders, noArgs, () => deps.library.listFolders())
   handle(IpcChannel.LibraryAddFolderDialog, noArgs, async () => {

@@ -8,6 +8,7 @@ export interface AppPaths {
   credentials: string
   screenshots: string
   artwork: string
+  thumbnails: string
 }
 
 /** Endpoints a development build may redirect (tests use a local mock TMDB). */
@@ -48,6 +49,7 @@ export function resolveAppPaths(): AppPaths {
     backups: join(userData, 'backups'),
     credentials: join(userData, 'credentials.json'),
     artwork: join(userData, 'cache', 'artwork'),
+    thumbnails: join(userData, 'cache', 'thumbs'),
     // Redirected along with user data so tests never write into the user's Pictures folder.
     screenshots: userDataOverride()
       ? join(userData, 'screenshots')

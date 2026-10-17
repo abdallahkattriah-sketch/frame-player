@@ -10,6 +10,8 @@ export type OverlayAction =
   | { type: 'screenshot' }
   | { type: 'toggle-info' }
   | { type: 'toggle-playlist' }
+  | { type: 'toggle-bookmarks' }
+  | { type: 'add-bookmark' }
   | { type: 'close-panels' }
 
 export type PlayerAction = PlayerCommand | OverlayAction
@@ -101,6 +103,14 @@ export function keyToAction(input: KeyInput, ctx: KeymapContext): PlayerAction |
       return { type: 'toggle-info' }
     case 'p':
       return { type: 'toggle-playlist' }
+    case 'PageDown':
+      return { type: 'chapter', direction: 'next' }
+    case 'PageUp':
+      return { type: 'chapter', direction: 'previous' }
+    case 'b':
+      return { type: 'add-bookmark' }
+    case 'B':
+      return { type: 'toggle-bookmarks' }
     default:
       return null
   }
@@ -111,6 +121,8 @@ export function isOverlayAction(action: PlayerAction): action is OverlayAction {
     action.type === 'screenshot' ||
     action.type === 'toggle-info' ||
     action.type === 'toggle-playlist' ||
+    action.type === 'toggle-bookmarks' ||
+    action.type === 'add-bookmark' ||
     action.type === 'close-panels'
   )
 }

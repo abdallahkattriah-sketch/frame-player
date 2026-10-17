@@ -49,6 +49,8 @@ export interface PlayerControllerOptions {
   ) => Promise<{ path: string; language: string | null; select: boolean }[]>
   /** Preferred subtitle languages for mpv's choice among embedded tracks (e.g. "ar,en"). */
   subtitleLanguages?: () => string
+  /** mpv properties for the active subtitle style profile. */
+  subtitleStyle?: () => [string, string | number | boolean][]
 }
 
 const STATE_FLUSH_MS = 100
@@ -165,6 +167,19 @@ export class PlayerController {
       language ?? '',
     )
     return true
+  }
+
+  /** Applies the current subtitle style to the running player (no-op when none is running). */
+  async applySubtitleStyle(): Promise<void> {
+    const mpv = this.mpv
+    if (!mpv?.running || !this.options.subtitleStyle) return
+    for (const [name, value] of this.options.subtitleStyle()) {
+      try {
+        await mpv.client.setProperty(name, value)
+      } catch (error) {
+        console.warn(`player: could not set ${name}: ${describe(error)}`)
+      }
+    }
   }
 
   /** Synchronous: safe to call from app 'will-quit'. Records the final state first. */
@@ -288,6 +303,7 @@ export class PlayerController {
       mpv.client.on('event', (event) => this.onMpvEvent(event))
       for (const name of observedProperties) await mpv.client.observeProperty(name)
       this.mpv = mpv
+      await this.applySubtitleStyle()
       this.update({ ...this.state, status: 'idle' })
       this.keepVideoOnTop()
       return mpv

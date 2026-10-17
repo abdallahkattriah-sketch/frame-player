@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { AppSettings, SettingsPatch } from '../settings/schema'
 import type { CredentialId, CredentialStoreStatus } from './credentials'
+import type { Bookmark, BookmarkEdit } from './bookmarks'
 import type { OpenMediaResult, PlayerCommand, PlayerState, ScreenshotResult } from './player'
 import type {
   AddFolderResult,
@@ -71,6 +72,11 @@ export interface FrameApi {
     getState: () => Promise<PlayerState>
     command: (command: PlayerCommand) => Promise<void>
     screenshot: () => Promise<ScreenshotResult>
+    /**
+     * Timeline preview image URL for a position in the playing video, generated on demand.
+     * Null when unavailable, turned off, or superseded by a newer request.
+     */
+    previewAt: (seconds: number) => Promise<string | null>
     /** Subscribes to state pushed from mpv; returns an unsubscribe function. */
     onState: (listener: (state: PlayerState) => void) => () => void
   }
@@ -111,6 +117,16 @@ export interface FrameApi {
     reidentify: (target: MatchTarget) => Promise<void>
     item: (target: MatchTarget) => Promise<ItemMetadata>
     onStatus: (listener: (status: MetadataStatus) => void) => () => void
+  }
+  /** Scene bookmarks of the video that is playing. */
+  bookmarks: {
+    list: () => Promise<Bookmark[]>
+    /** Bookmarks the current position; null if nothing is playing. */
+    add: () => Promise<Bookmark | null>
+    edit: (id: number, edit: BookmarkEdit) => Promise<void>
+    remove: (id: number) => Promise<void>
+    /** Fires when bookmarks change outside a request (e.g. a thumbnail became ready). */
+    onChanged: (listener: () => void) => () => void
   }
   subtitles: {
     providers: () => Promise<ProviderStatus[]>
