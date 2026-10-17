@@ -1,11 +1,18 @@
 import { BaseWindow, BrowserWindow } from 'electron'
-import { existsSync } from 'node:fs'
-import { basename } from 'node:path'
+import { mkdirSync } from 'node:fs'
+import { basename, extname, join } from 'node:path'
 import { IpcChannel } from '@shared/contracts/channels'
-import { initialPlayerState, type PlayerCommand, type PlayerState } from '@shared/contracts/player'
+import {
+  initialPlayerState,
+  type OpenMediaResult,
+  type PlayerCommand,
+  type PlayerState,
+  type ScreenshotResult,
+} from '@shared/contracts/player'
 import { MpvProcess } from '../media-engine/mpv-process'
-import { applyProperty, observedProperties, toMpvCommand } from '../media-engine/player-state'
+import { observedProperties, PlayerStateTracker, toMpvCommands } from '../media-engine/player-state'
 import type { MpvEvent } from '../media-engine/mpv-ipc-client'
+import { resolveMediaPaths } from '../filesystem/media-files'
 import { hardenWebContents, secureWebPreferences } from '../security/web-security'
 
 export interface PlayerControllerOptions {
@@ -16,6 +23,10 @@ export interface PlayerControllerOptions {
   devServerUrl: string | undefined
   /** Raises mpv's video child window above Electron's compositor window; false if not found. */
   raiseVideoWindow: (hostHwnd: number) => boolean
+  /** Read each time the engine starts. */
+  getEngineSettings: () => { hwdec: string; volume: number }
+  /** Directory screenshots are written to. */
+  screenshotDir: () => string
 }
 
 const STATE_FLUSH_MS = 100
@@ -43,29 +54,37 @@ export class PlayerController {
     return this.state
   }
 
-  async open(path: string): Promise<void> {
+  /**
+   * Replaces the playlist with the given files and folders (folders expand to the videos
+   * directly inside them) and starts playing the first one.
+   */
+  async openPaths(paths: readonly string[]): Promise<OpenMediaResult> {
+    const files = resolveMediaPaths(paths)
+    const [first, ...rest] = files
+    if (!first) return { queued: 0, error: 'No supported video files were found.' }
+
     this.ensureWindows()
-    if (!existsSync(path)) {
-      this.update({ ...this.state, status: 'error', error: `File not found: ${path}` })
-      return
-    }
     try {
       const mpv = await this.ensureEngine()
       this.update({
         ...this.state,
         status: 'loading',
         error: null,
-        path,
-        title: basename(path),
+        path: first,
+        title: basename(first),
         position: null,
         duration: null,
         eofReached: false,
+        shuffle: false,
       })
-      // The path travels as a JSON string over IPC: no quoting or shell involved.
-      await mpv.client.command('loadfile', path, 'replace')
+      // Paths travel as JSON strings over IPC: no quoting or shell involved.
+      await mpv.client.command('loadfile', first, 'replace')
+      for (const file of rest) await mpv.client.command('loadfile', file, 'append')
       await mpv.client.setProperty('pause', false)
+      return { queued: files.length }
     } catch (error) {
       this.update({ ...this.state, status: 'error', error: describe(error) })
+      return { queued: 0, error: describe(error) }
     }
   }
 
@@ -74,9 +93,25 @@ export class PlayerController {
       this.host?.setFullScreen(!this.host.isFullScreen())
       return
     }
-    const mpvCommand = toMpvCommand(command)
-    if (!mpvCommand || !this.mpv?.running) return
-    await this.mpv.client.command(...mpvCommand)
+    if (!this.mpv?.running) return
+    for (const mpvCommand of toMpvCommands(command)) await this.mpv.client.command(...mpvCommand)
+    // mpv has no observable shuffle property; the playlist order change is observed instead.
+    if (command.type === 'set-shuffle') this.update({ ...this.state, shuffle: command.shuffle })
+  }
+
+  /** Saves the current frame (with subtitles) as PNG in the screenshot directory. */
+  async screenshot(): Promise<ScreenshotResult> {
+    if (!this.mpv?.running || !this.state.videoActive || !this.state.path) {
+      throw new Error('Nothing is playing.')
+    }
+    const dir = this.options.screenshotDir()
+    mkdirSync(dir, { recursive: true })
+    const name = basename(this.state.path, extname(this.state.path)).replace(/[<>:"/\\|?*]/g, '_')
+    const seconds = Math.floor(this.state.position ?? 0)
+    const stamp = new Date().toISOString().replaceAll(':', '-').replace(/\..+$/, '')
+    const path = join(dir, `${name} ${seconds}s ${stamp}.png`)
+    await this.mpv.client.command('screenshot-to-file', path, 'subtitles')
+    return { path }
   }
 
   /** Synchronous: safe to call from app 'will-quit'. */
@@ -172,7 +207,11 @@ export class PlayerController {
 
     this.starting = (async () => {
       const windowId = host.getNativeWindowHandle().readBigUInt64LE(0).toString()
-      const mpv = await MpvProcess.start({ mpvPath: this.options.resolveMpvPath(), windowId })
+      const mpv = await MpvProcess.start({
+        mpvPath: this.options.resolveMpvPath(),
+        windowId,
+        ...this.options.getEngineSettings(),
+      })
       mpv.on('exit', ({ code, expected }) => {
         if (this.mpv === mpv) this.mpv = null
         if (!expected) {
@@ -184,8 +223,9 @@ export class PlayerController {
         }
       })
       mpv.on('log', (line) => console.warn(`mpv: ${line}`))
+      const tracker = new PlayerStateTracker()
       mpv.client.on('property-change', ({ name, data }) => {
-        this.update(applyProperty(this.state, name, data))
+        this.update(tracker.apply(this.state, name, data))
         if (name === 'vo-configured' && data === true) this.keepVideoOnTop()
       })
       mpv.client.on('event', (event) => this.onMpvEvent(event))

@@ -6,6 +6,8 @@ export const playbackSettingsSchema = z.object({
   /** Percentage of runtime after which an item counts as watched. */
   completionThresholdPercent: z.number().int().min(50).max(100),
   defaultVolume: z.number().int().min(0).max(100),
+  /** mpv --hwdec: auto-safe uses hardware decoding when known to be reliable. */
+  hardwareDecoding: z.enum(['auto-safe', 'auto', 'no']),
 })
 
 export const appearanceSettingsSchema = z.object({
@@ -34,6 +36,7 @@ export const defaultSettings: AppSettings = {
     seekStepSeconds: 10,
     completionThresholdPercent: 90,
     defaultVolume: 80,
+    hardwareDecoding: 'auto-safe',
   },
   appearance: { themeId: 'midnight-cinema' },
   privacy: { onlineMetadataEnabled: true, onlineSubtitlesEnabled: true },

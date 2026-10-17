@@ -42,8 +42,8 @@ function createMainWindow(): BrowserWindow {
 }
 
 function openFromArgv(argv: readonly string[], cwd: string) {
-  const [first] = extractMediaPaths(argv.slice(1), cwd)
-  if (first) void player?.open(first)
+  const paths = extractMediaPaths(argv.slice(1), cwd)
+  if (paths.length > 0) void player?.openPaths(paths)
 }
 
 // Must run before the single-instance lock, which is keyed on the userData directory.
@@ -64,8 +64,9 @@ if (!app.requestSingleInstanceLock()) {
   void app.whenReady().then(() => {
     hardenSession(session.defaultSession)
 
+    const paths = resolveAppPaths()
     try {
-      services = bootstrapServices(resolveAppPaths())
+      services = bootstrapServices(paths)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       dialog.showErrorBox('Frame could not start', message)
@@ -85,6 +86,14 @@ if (!app.requestSingleInstanceLock()) {
       loadOverlay: (win) => loadRoute(win, '/player'),
       devServerUrl,
       raiseVideoWindow,
+      getEngineSettings: () => {
+        const playback = services?.settings.get().playback
+        return {
+          hwdec: playback?.hardwareDecoding ?? 'auto-safe',
+          volume: playback?.defaultVolume ?? 100,
+        }
+      },
+      screenshotDir: () => paths.screenshots,
     })
 
     registerIpcHandlers({ ...services, player })

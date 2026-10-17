@@ -1,5 +1,46 @@
 import { z } from 'zod'
 
+export interface PlayerTrack {
+  id: number
+  type: 'video' | 'audio' | 'sub'
+  title: string | null
+  lang: string | null
+  codec: string | null
+  selected: boolean
+  external: boolean
+  isDefault: boolean
+  forced: boolean
+}
+
+export interface PlaylistItem {
+  path: string
+  title: string | null
+  current: boolean
+}
+
+export type RepeatMode = 'off' | 'one' | 'all'
+export type VideoScaling = 'fit' | 'fill' | 'stretch'
+
+export const aspectRatioOptions = [
+  'auto',
+  '16:9',
+  '4:3',
+  '21:9',
+  '2.35:1',
+  '1.85:1',
+  '1:1',
+] as const
+export type AspectRatio = (typeof aspectRatioOptions)[number]
+
+export interface VideoInfo {
+  width: number | null
+  height: number | null
+  videoCodec: string | null
+  audioCodec: string | null
+  fps: number | null
+  hwdec: string | null
+}
+
 /** Playback state as reported by mpv. The renderer only displays it; it never simulates it. */
 export interface PlayerState {
   status: 'starting' | 'idle' | 'loading' | 'ready' | 'error' | 'closed'
@@ -11,10 +52,23 @@ export interface PlayerState {
   paused: boolean
   volume: number
   muted: boolean
+  speed: number
   eofReached: boolean
   /** True once mpv has configured a video output for the current file. */
   videoActive: boolean
   fullscreen: boolean
+  tracks: PlayerTrack[]
+  subtitlesVisible: boolean
+  /** Seconds; positive delays the stream. */
+  audioDelay: number
+  subtitleDelay: number
+  repeat: RepeatMode
+  shuffle: boolean
+  playlist: PlaylistItem[]
+  playlistPosition: number | null
+  aspectRatio: AspectRatio
+  scaling: VideoScaling
+  videoInfo: VideoInfo
   error: string | null
 }
 
@@ -27,11 +81,35 @@ export const initialPlayerState: PlayerState = {
   paused: true,
   volume: 100,
   muted: false,
+  speed: 1,
   eofReached: false,
   videoActive: false,
   fullscreen: false,
+  tracks: [],
+  subtitlesVisible: true,
+  audioDelay: 0,
+  subtitleDelay: 0,
+  repeat: 'off',
+  shuffle: false,
+  playlist: [],
+  playlistPosition: null,
+  aspectRatio: 'auto',
+  scaling: 'fit',
+  videoInfo: {
+    width: null,
+    height: null,
+    videoCodec: null,
+    audioCodec: null,
+    fps: null,
+    hwdec: null,
+  },
   error: null,
 }
+
+export const MIN_SPEED = 0.1
+export const MAX_SPEED = 4
+const delaySeconds = z.number().finite().min(-600).max(600)
+const trackId = z.union([z.number().int().positive(), z.literal('none')])
 
 /**
  * High-level commands the renderer may send. Raw mpv commands are never accepted from the
@@ -49,6 +127,35 @@ export const playerCommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('toggle-mute') }),
   z.object({ type: z.literal('stop') }),
   z.object({ type: z.literal('toggle-fullscreen') }),
+  z.object({
+    type: z.literal('set-speed'),
+    speed: z.number().finite().min(MIN_SPEED).max(MAX_SPEED),
+  }),
+  z.object({ type: z.literal('frame-step'), direction: z.enum(['forward', 'backward']) }),
+  z.object({ type: z.literal('set-audio-track'), id: trackId }),
+  z.object({ type: z.literal('set-subtitle-track'), id: trackId }),
+  z.object({ type: z.literal('set-subtitles-visible'), visible: z.boolean() }),
+  z.object({ type: z.literal('set-audio-delay'), seconds: delaySeconds }),
+  z.object({ type: z.literal('set-subtitle-delay'), seconds: delaySeconds }),
+  z.object({ type: z.literal('set-aspect-ratio'), aspect: z.enum(aspectRatioOptions) }),
+  z.object({ type: z.literal('set-scaling'), scaling: z.enum(['fit', 'fill', 'stretch']) }),
+  z.object({ type: z.literal('set-repeat'), repeat: z.enum(['off', 'one', 'all']) }),
+  z.object({ type: z.literal('set-shuffle'), shuffle: z.boolean() }),
+  z.object({ type: z.literal('playlist-next') }),
+  z.object({ type: z.literal('playlist-previous') }),
+  z.object({ type: z.literal('playlist-play'), index: z.number().int().min(0) }),
+  z.object({ type: z.literal('playlist-remove'), index: z.number().int().min(0) }),
 ])
 
 export type PlayerCommand = z.infer<typeof playerCommandSchema>
+
+/** Result of opening media: how many files were queued, or why nothing was. */
+export interface OpenMediaResult {
+  queued: number
+  /** Present when nothing could be opened. */
+  error?: string
+}
+
+export interface ScreenshotResult {
+  path: string
+}

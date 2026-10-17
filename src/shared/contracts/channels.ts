@@ -9,9 +9,12 @@ export const IpcChannel = {
   CredentialsStatus: 'credentials:status',
   CredentialsSet: 'credentials:set',
   CredentialsDelete: 'credentials:delete',
-  PlayerOpenFileDialog: 'player:open-file-dialog',
+  PlayerOpenFilesDialog: 'player:open-files-dialog',
+  PlayerOpenFolderDialog: 'player:open-folder-dialog',
+  PlayerOpenPaths: 'player:open-paths',
   PlayerGetState: 'player:get-state',
   PlayerCommand: 'player:command',
+  PlayerScreenshot: 'player:screenshot',
   /** Main → renderer push. */
   PlayerStateChanged: 'player:state-changed',
 } as const

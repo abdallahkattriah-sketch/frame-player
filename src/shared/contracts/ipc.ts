@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { AppSettings, SettingsPatch } from '../settings/schema'
 import type { CredentialId, CredentialStoreStatus } from './credentials'
-import type { PlayerCommand, PlayerState } from './player'
+import type { OpenMediaResult, PlayerCommand, PlayerState, ScreenshotResult } from './player'
 
 export { IpcChannel, type IpcChannelName } from './channels'
 
@@ -35,10 +35,14 @@ export interface FrameApi {
     delete: (id: CredentialId) => Promise<CredentialStoreStatus>
   }
   player: {
-    /** Shows a native file picker in the main process and plays the chosen file. */
-    openFileDialog: () => Promise<void>
+    /** Native pickers run in the main process; the chosen files replace the playlist. */
+    openFilesDialog: () => Promise<OpenMediaResult>
+    openFolderDialog: () => Promise<OpenMediaResult>
+    /** Plays files dropped onto a window (folders expand to the videos inside). */
+    openDroppedFiles: (files: readonly File[]) => Promise<OpenMediaResult>
     getState: () => Promise<PlayerState>
     command: (command: PlayerCommand) => Promise<void>
+    screenshot: () => Promise<ScreenshotResult>
     /** Subscribes to state pushed from mpv; returns an unsubscribe function. */
     onState: (listener: (state: PlayerState) => void) => () => void
   }

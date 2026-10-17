@@ -8,6 +8,8 @@ export interface MpvProcessOptions {
   /** Native window handle (HWND) mpv renders into. */
   windowId: string
   hwdec?: string
+  /** Initial volume, 0–100. */
+  volume?: number
 }
 
 interface MpvProcessEvents {
@@ -35,6 +37,8 @@ export function buildMpvArgs(options: MpvProcessOptions, pipePath: string): stri
     '--input-cursor=no',
     '--cursor-autohide=no',
     `--hwdec=${options.hwdec ?? 'auto-safe'}`,
+    `--volume=${options.volume ?? 100}`,
+    '--screenshot-format=png',
     '--terminal=no',
     '--msg-level=all=warn',
     '--load-scripts=no',

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import type { PlayerCommand, PlayerState } from '../../src/shared/contracts/player'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import koffi from 'koffi'
@@ -106,6 +107,119 @@ test('plays a local file with a Unicode path and cleans up mpv on exit', async (
   }
 
   await expect.poll(() => frameMpvPids().filter((p) => pids.includes(p)).length).toBe(0)
+})
+
+const patternClip = join(mediaDir, 'Test Pattern (2024).mkv')
+
+/** Polls the mpv-derived state until `predicate` holds. */
+async function waitForState(
+  overlay: Page,
+  predicate: (s: PlayerState) => boolean,
+  message: string,
+): Promise<PlayerState> {
+  let last: PlayerState | undefined
+  await expect
+    .poll(
+      async () => {
+        last = await overlay.evaluate(() => window.frame.player.getState())
+        return predicate(last)
+      },
+      { message, timeout: 10_000 },
+    )
+    .toBe(true)
+  return last as PlayerState
+}
+
+const command = (overlay: Page, cmd: PlayerCommand) =>
+  overlay.evaluate((c) => window.frame.player.command(c), cmd)
+
+test('player controls drive mpv: tracks, speed, delays, video options, playlist, screenshot', async () => {
+  const app = await launchApp(userDataDir, [patternClip, unicodeClip])
+  try {
+    const overlay = await overlayPage(app)
+    await expect(overlay.getByTestId('player-overlay')).toHaveAttribute('data-status', 'ready', {
+      timeout: 15_000,
+    })
+
+    // Playlist from two command-line files.
+    let state = await waitForState(overlay, (s) => s.playlist.length === 2, 'playlist of 2')
+    expect(state.playlist[0]?.current).toBe(true)
+
+    // External Arabic and English subtitles next to the clip are discovered by mpv.
+    state = await waitForState(
+      overlay,
+      (s) => s.tracks.filter((t) => t.type === 'sub').length === 2,
+      'two subtitle tracks',
+    )
+    const english = state.tracks.find((t) => t.type === 'sub' && t.lang === 'en')
+    expect(english).toBeDefined()
+    await command(overlay, { type: 'set-subtitle-track', id: english?.id ?? -1 })
+    await waitForState(
+      overlay,
+      (s) => s.tracks.some((t) => t.type === 'sub' && t.lang === 'en' && t.selected),
+      'English subtitles selected',
+    )
+    await command(overlay, { type: 'set-subtitle-track', id: 'none' })
+    await waitForState(
+      overlay,
+      (s) => !s.tracks.some((t) => t.type === 'sub' && t.selected),
+      'subtitles off',
+    )
+
+    await command(overlay, { type: 'set-speed', speed: 1.5 })
+    await command(overlay, { type: 'set-subtitle-delay', seconds: 0.3 })
+    await command(overlay, { type: 'set-audio-delay', seconds: -0.2 })
+    await command(overlay, { type: 'set-aspect-ratio', aspect: '4:3' })
+    await command(overlay, { type: 'set-scaling', scaling: 'fill' })
+    await command(overlay, { type: 'set-repeat', repeat: 'all' })
+    state = await waitForState(
+      overlay,
+      (s) =>
+        s.speed === 1.5 &&
+        Math.abs(s.subtitleDelay - 0.3) < 1e-6 &&
+        Math.abs(s.audioDelay + 0.2) < 1e-6 &&
+        s.aspectRatio === '4:3' &&
+        s.scaling === 'fill' &&
+        s.repeat === 'all',
+      'speed, delays, aspect, scaling, repeat applied',
+    )
+    await command(overlay, { type: 'set-repeat', repeat: 'one' })
+    await waitForState(overlay, (s) => s.repeat === 'one', 'repeat one')
+
+    // Frame stepping while paused moves forward by roughly one frame.
+    await command(overlay, { type: 'set-pause', paused: true })
+    const before = (await waitForState(overlay, (s) => s.paused, 'paused')).position ?? 0
+    await command(overlay, { type: 'frame-step', direction: 'forward' })
+    await waitForState(
+      overlay,
+      (s) => (s.position ?? 0) > before && (s.position ?? 0) - before < 0.5,
+      'one frame forward',
+    )
+
+    // Info panel reports what mpv measured.
+    await overlay.keyboard.press('i')
+    await expect(overlay.getByTestId('info-panel')).toContainText('1280 × 720')
+
+    // Screenshot is a real PNG written to the (redirected) screenshot folder.
+    const shot = await overlay.evaluate(() => window.frame.player.screenshot())
+    expect(shot.path.startsWith(join(userDataDir, 'screenshots'))).toBe(true)
+    await expect.poll(() => existsSync(shot.path)).toBe(true)
+    expect(readFileSync(shot.path).subarray(1, 4).toString('ascii')).toBe('PNG')
+
+    // Next / previous.
+    await command(overlay, { type: 'playlist-next' })
+    await waitForState(overlay, (s) => s.path === unicodeClip, 'second file playing')
+    await command(overlay, { type: 'playlist-previous' })
+    await waitForState(overlay, (s) => s.path === patternClip, 'back to first file')
+
+    // Fullscreen is a window operation reported back through state.
+    await command(overlay, { type: 'toggle-fullscreen' })
+    await waitForState(overlay, (s) => s.fullscreen, 'fullscreen on')
+    await command(overlay, { type: 'toggle-fullscreen' })
+    await waitForState(overlay, (s) => !s.fullscreen, 'fullscreen off')
+  } finally {
+    await app.close()
+  }
 })
 
 test('shows a useful error for a file mpv cannot play', async () => {
