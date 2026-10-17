@@ -1,0 +1,19 @@
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { Sidebar } from '@renderer/components/shell/Sidebar'
+
+afterEach(cleanup)
+
+describe('Sidebar', () => {
+  it('marks the active view and reports navigation', () => {
+    const onNavigate = vi.fn()
+    render(<Sidebar activeView="movies" onNavigate={onNavigate} />)
+
+    expect(screen.getByRole('button', { name: 'Movies' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Home' }).getAttribute('aria-current')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    expect(onNavigate).toHaveBeenCalledWith('settings')
+  })
+})

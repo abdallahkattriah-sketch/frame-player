@@ -1,0 +1,24 @@
+/* Midnight Cinema — default theme. All UI colors come from these semantic tokens. */
+:root {
+  --frame-bg: #14161b;
+  --frame-surface: #1b1e25;
+  --frame-elevated: #242832;
+  --frame-raised: #303541;
+  --frame-text: #f0eee9;
+  --frame-text-muted: #a9adb7;
+  --frame-text-subtle: #777e8b;
+  --frame-border: #363b46;
+  --frame-accent: #e5a15b;
+  --frame-danger: #e36d68;
+
+  --frame-radius-sm: 6px;
+  --frame-radius-md: 10px;
+  --frame-radius-lg: 14px;
+
+  --frame-sidebar-width: 220px;
+  --frame-toolbar-height: 52px;
+
+  --frame-font-sans: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+
+  color-scheme: dark;
+}

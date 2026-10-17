@@ -1,0 +1,42 @@
+@import 'tailwindcss';
+@import './tokens.css';
+
+/* Map semantic tokens into Tailwind utilities (bg-surface, text-muted, border-border, ...). */
+@theme inline {
+  --color-bg: var(--frame-bg);
+  --color-surface: var(--frame-surface);
+  --color-elevated: var(--frame-elevated);
+  --color-raised: var(--frame-raised);
+  --color-text: var(--frame-text);
+  --color-muted: var(--frame-text-muted);
+  --color-subtle: var(--frame-text-subtle);
+  --color-border: var(--frame-border);
+  --color-accent: var(--frame-accent);
+  --color-danger: var(--frame-danger);
+
+  --radius-sm: var(--frame-radius-sm);
+  --radius-md: var(--frame-radius-md);
+  --radius-lg: var(--frame-radius-lg);
+
+  --font-sans: var(--frame-font-sans);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--frame-bg);
+  color: var(--frame-text);
+  font-family: var(--frame-font-sans);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--frame-accent);
+  outline-offset: 2px;
+}

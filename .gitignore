@@ -1,0 +1,15 @@
+node_modules/
+out/
+dist/
+release/
+coverage/
+test-results/
+playwright-report/
+.superpowers/
+resources/mpv/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
