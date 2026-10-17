@@ -43,7 +43,7 @@ async function addFolder(app: ElectronApplication, page: Page) {
   await app.evaluate(({ dialog }, chosen) => {
     dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [chosen] })) as never
   }, mediaRoot)
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page.getByRole('button', { name: 'Add folder' }).click()
   await expect(page.getByTestId('library-folder-status')).toHaveText('3 videos')
 }
@@ -109,7 +109,7 @@ test('identifies the library with TMDB, shows artwork and details, and supports 
     await details.getByRole('button', { name: 'Close details' }).click()
 
     // Required TMDB attribution.
-    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('button', { name: 'Settings', exact: true }).click()
     await expect(page.getByTestId('tmdb-attribution')).toHaveText(
       'This product uses the TMDB API but is not endorsed or certified by TMDB.',
     )
@@ -123,7 +123,7 @@ test('turning off online lookups stops all TMDB requests and the library keeps w
   const app = await launch()
   try {
     const page = await app.firstWindow()
-    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('button', { name: 'Settings', exact: true }).click()
     await page.getByLabel(/Look up information online/).uncheck()
     await page.getByLabel('TMDB token', { exact: true }).fill(GOOD_TOKEN)
     await page.getByRole('button', { name: 'Save TMDB token' }).click()

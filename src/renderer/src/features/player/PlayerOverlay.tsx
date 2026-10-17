@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Bookmark as BookmarkIcon,
   Camera,
@@ -14,11 +14,27 @@ import {
   VolumeX,
 } from 'lucide-react'
 import { defaultSettings } from '@shared/settings/schema'
+import {
+  bindingIndex,
+  effectiveShortcuts,
+  shortcutActions,
+  type ShortcutActionId,
+} from '@shared/settings/shortcuts'
+import { useSettings } from '@renderer/app/settings-context'
+import { CommandPalette, type PaletteCommand } from '@renderer/components/ui/CommandPalette'
 import { SubtitleSearchDialog } from '@renderer/features/subtitles/SubtitleSearchDialog'
 import { formatTime } from './format-time'
 import { InfoPanel } from './InfoPanel'
 import { AudioSubtitleMenu, SpeedMenu, VideoMenu } from './menus'
-import { isOverlayAction, keyToAction, type OverlayAction } from './player-keymap'
+import {
+  actionFor,
+  isOverlayAction,
+  isTypingTarget,
+  keyToAction,
+  shouldHandleWhileTyping,
+  type OverlayAction,
+  type PlayerAction,
+} from './player-keymap'
 import { PlaylistPanel } from './PlaylistPanel'
 import { BookmarksPanel } from './BookmarksPanel'
 import { chapterAt, Timeline } from './Timeline'
@@ -65,12 +81,28 @@ export function PlayerOverlay() {
   const [showStyle, setShowStyle] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [showSubtitleSearch, setShowSubtitleSearch] = useState(false)
-  const [seekStep, setSeekStep] = useState(defaultSettings.playback.seekStepSeconds)
+  const [showPalette, setShowPalette] = useState(false)
+  const [compact, setCompact] = useState(false)
+  const [audioMenuOpen, setAudioMenuOpen] = useState(false)
   const toastTimer = useRef<number | undefined>(undefined)
+  const { settings } = useSettings()
+  const seekStep = settings?.playback.seekStepSeconds ?? defaultSettings.playback.seekStepSeconds
+  const shortcutMap = useMemo(
+    () => effectiveShortcuts(settings?.shortcuts.bindings ?? {}),
+    [settings?.shortcuts.bindings],
+  )
+  const bindings = useMemo(() => bindingIndex(shortcutMap, 'player'), [shortcutMap])
 
   const bookmarks = useBookmarks(state.path)
   const panelOpen = showInfo || showPlaylist || showBookmarks || showStyle
-  const controlsHidden = idle && !state.paused && state.status === 'ready' && !panelOpen
+  const controlsHidden =
+    settings?.appearance.playerControls !== 'always' &&
+    idle &&
+    !state.paused &&
+    state.status === 'ready' &&
+    !panelOpen &&
+    !showPalette &&
+    !audioMenuOpen
 
   const notify = useCallback((message: string) => {
     setToast(message)
@@ -87,13 +119,7 @@ export function PlayerOverlay() {
       .catch(() => notify('Could not add the bookmark.'))
   }, [bookmarks, notify])
 
-  useEffect(() => {
-    window.frame.settings
-      .get()
-      .then((s) => setSeekStep(s.playback.seekStepSeconds))
-      .catch(() => undefined)
-    return () => window.clearTimeout(toastTimer.current)
-  }, [])
+  useEffect(() => () => window.clearTimeout(toastTimer.current), [])
 
   const runOverlayAction = useCallback(
     (action: OverlayAction) => {
@@ -122,6 +148,26 @@ export function PlayerOverlay() {
         case 'add-bookmark':
           addBookmark()
           return
+        case 'toggle-subtitle-style':
+          setShowPlaylist(false)
+          setShowBookmarks(false)
+          setShowStyle((v) => !v)
+          return
+        case 'open-audio-menu':
+          setAudioMenuOpen((v) => !v)
+          return
+        case 'subtitle-search':
+          setShowSubtitleSearch(true)
+          return
+        case 'toggle-compact':
+          setCompact((v) => !v)
+          return
+        case 'command-palette':
+          setShowPalette(true)
+          return
+        case 'open-settings':
+          void window.frame.app.showSettings()
+          return
         case 'close-panels':
           setShowInfo(false)
           setShowPlaylist(false)
@@ -133,21 +179,43 @@ export function PlayerOverlay() {
     [notify, addBookmark],
   )
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      // Don't steal keys from buttons (Space/Enter) or text fields.
-      const target = e.target as HTMLElement | null
-      if (target?.closest('input:not([type=range]), textarea, [contenteditable=true]')) return
-      if (target?.closest('button') && (e.key === ' ' || e.key === 'Enter')) return
-      const action = keyToAction(e, { state, seekStepSeconds: seekStep, panelOpen })
-      if (!action) return
-      e.preventDefault()
+  const dispatch = useCallback(
+    (action: PlayerAction) => {
       if (isOverlayAction(action)) runOverlayAction(action)
       else sendCommand(action)
+    },
+    [runOverlayAction],
+  )
+
+  useEffect(() => {
+    if (showPalette) return // the palette handles its own keys
+    const onKey = (e: KeyboardEvent) => {
+      // Text fields keep their keys; buttons keep Space/Enter.
+      if (isTypingTarget(e.target) && !shouldHandleWhileTyping(e)) return
+      const target = e.target as HTMLElement | null
+      if (target?.closest('button') && (e.key === ' ' || e.key === 'Enter')) return
+      const action = keyToAction(e, { state, seekStepSeconds: seekStep, panelOpen, bindings })
+      if (!action) return
+      e.preventDefault()
+      dispatch(action)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [state, seekStep, panelOpen, runOverlayAction])
+  }, [state, seekStep, panelOpen, bindings, dispatch, showPalette])
+
+  const paletteCommands = useMemo<PaletteCommand[]>(
+    () =>
+      shortcutActions
+        .filter((a) => a.id !== 'command-palette')
+        .map((a) => ({
+          id: a.id,
+          label: a.label,
+          group: a.group,
+          binding: shortcutMap[a.id as ShortcutActionId][0],
+          run: () => dispatch(actionFor(a.id, { state, seekStepSeconds: seekStep })),
+        })),
+    [shortcutMap, dispatch, state, seekStep],
+  )
 
   const drop = useFileDrop((result) => {
     if (result.error) notify(result.error)
@@ -197,6 +265,9 @@ export function PlayerOverlay() {
         />
       )}
       {showStyle && <SubtitleStylePanel onClose={() => setShowStyle(false)} />}
+      {showPalette && (
+        <CommandPalette commands={paletteCommands} onClose={() => setShowPalette(false)} />
+      )}
       {showSubtitleSearch && state.path && (
         <SubtitleSearchDialog
           target={{ current: true }}
@@ -240,7 +311,7 @@ export function PlayerOverlay() {
             bookmarks={bookmarks.bookmarks}
             onSeek={(seconds) => sendCommand({ type: 'seek', mode: 'absolute', seconds })}
           />
-          <div className="mt-1 flex items-center gap-1">
+          <div className="mt-1 flex items-center gap-1" data-compact={compact || undefined}>
             {hasPlaylist && (
               <IconButton
                 label="Previous"
@@ -270,18 +341,22 @@ export function PlayerOverlay() {
               >
                 {state.muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
               </IconButton>
-              <input
-                type="range"
-                aria-label="Volume"
-                min={0}
-                max={130}
-                value={state.volume}
-                onChange={(e) =>
-                  sendCommand({ type: 'set-volume', volume: Number(e.currentTarget.value) })
-                }
-                className="mr-1 w-24 accent-[var(--frame-accent)]"
-              />
+              {!compact && (
+                <input
+                  type="range"
+                  aria-label="Volume"
+                  min={0}
+                  max={130}
+                  value={state.volume}
+                  onChange={(e) =>
+                    sendCommand({ type: 'set-volume', volume: Number(e.currentTarget.value) })
+                  }
+                  className="mr-1 w-24 accent-[var(--frame-accent)]"
+                />
+              )}
               <AudioSubtitleMenu
+                open={audioMenuOpen}
+                onOpenChange={setAudioMenuOpen}
                 state={state}
                 onSearchOnline={() => setShowSubtitleSearch(true)}
                 onOpenStyle={() => {
@@ -299,35 +374,43 @@ export function PlayerOverlay() {
                     .catch(() => undefined)
                 }}
               />
-              <SpeedMenu speed={state.speed} />
-              <VideoMenu state={state} />
-              <IconButton
-                label="Screenshot"
-                onClick={() => runOverlayAction({ type: 'screenshot' })}
-              >
-                <Camera size={18} />
-              </IconButton>
-              <IconButton
-                label="Bookmarks"
-                pressed={showBookmarks}
-                onClick={() => runOverlayAction({ type: 'toggle-bookmarks' })}
-              >
-                <BookmarkIcon size={18} />
-              </IconButton>
-              <IconButton
-                label="Playlist"
-                pressed={showPlaylist}
-                onClick={() => runOverlayAction({ type: 'toggle-playlist' })}
-              >
-                <ListVideo size={18} />
-              </IconButton>
-              <IconButton
-                label="Playback information"
-                pressed={showInfo}
-                onClick={() => setShowInfo((v) => !v)}
-              >
-                <Info size={18} />
-              </IconButton>
+              {!compact && (
+                <>
+                  <SpeedMenu speed={state.speed} />
+                  <VideoMenu state={state} />
+                </>
+              )}
+              {!compact && (
+                <>
+                  <IconButton
+                    label="Screenshot"
+                    onClick={() => runOverlayAction({ type: 'screenshot' })}
+                  >
+                    <Camera size={18} />
+                  </IconButton>
+                  <IconButton
+                    label="Bookmarks"
+                    pressed={showBookmarks}
+                    onClick={() => runOverlayAction({ type: 'toggle-bookmarks' })}
+                  >
+                    <BookmarkIcon size={18} />
+                  </IconButton>
+                  <IconButton
+                    label="Playlist"
+                    pressed={showPlaylist}
+                    onClick={() => runOverlayAction({ type: 'toggle-playlist' })}
+                  >
+                    <ListVideo size={18} />
+                  </IconButton>
+                  <IconButton
+                    label="Playback information"
+                    pressed={showInfo}
+                    onClick={() => setShowInfo((v) => !v)}
+                  >
+                    <Info size={18} />
+                  </IconButton>
+                </>
+              )}
               <IconButton
                 label={state.fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
                 onClick={() => sendCommand({ type: 'toggle-fullscreen' })}

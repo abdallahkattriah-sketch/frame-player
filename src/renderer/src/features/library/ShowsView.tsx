@@ -147,7 +147,7 @@ export function ShowsView({ search }: { search: string }) {
           {search ? 'No shows match your search.' : 'No TV episodes found in your library yet.'}
         </div>
       ) : (
-        <div className="grid min-h-0 flex-1 grid-cols-[repeat(auto-fill,minmax(150px,1fr))] content-start gap-5 overflow-y-auto pr-1">
+        <div className="grid min-h-0 flex-1 grid-cols-[repeat(auto-fill,minmax(var(--frame-poster-width),1fr))] content-start gap-5 overflow-y-auto pr-1">
           {(shows ?? []).map((show) => (
             <ShowCard key={show.key} show={show} onOpen={() => setOpenKey(show.key)} />
           ))}

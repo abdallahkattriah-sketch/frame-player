@@ -6,6 +6,13 @@ import {
   subtitleAppearanceBaseSchema,
   subtitleAppearanceSchema,
 } from './subtitle-style'
+import { appearanceSettingsSchema, defaultAppearance } from './theme'
+import { shortcutOverridesSchema } from './shortcuts'
+
+export const shortcutSettingsSchema = z.object({
+  /** Differences from the default shortcuts. */
+  bindings: shortcutOverridesSchema,
+})
 
 export const playbackSettingsSchema = z.object({
   resumePlayback: z.boolean(),
@@ -17,10 +24,6 @@ export const playbackSettingsSchema = z.object({
   hardwareDecoding: z.enum(['auto-safe', 'auto', 'no']),
   /** Generate preview images when hovering the timeline. */
   timelinePreviews: z.boolean(),
-})
-
-export const appearanceSettingsSchema = z.object({
-  themeId: z.string().min(1).max(64),
 })
 
 export const privacySettingsSchema = z.object({
@@ -81,6 +84,7 @@ export const appSettingsSchema = z.object({
   subtitleStyle: subtitleAppearanceSchema,
   ui: uiSettingsSchema,
   appearance: appearanceSettingsSchema,
+  shortcuts: shortcutSettingsSchema,
   privacy: privacySettingsSchema,
 })
 
@@ -111,7 +115,8 @@ export const defaultSettings: AppSettings = {
   },
   subtitleStyle: defaultSubtitleAppearance,
   ui: { viewPreferences: {} },
-  appearance: { themeId: 'midnight-cinema' },
+  appearance: defaultAppearance,
+  shortcuts: { bindings: {} },
   privacy: { onlineMetadataEnabled: true, onlineSubtitlesEnabled: true },
 }
 
@@ -126,6 +131,7 @@ export const settingsPatchSchema = z
     subtitles: subtitleSettingsSchema.omit({ folder: true }).partial().strict().optional(),
     subtitleStyle: subtitleAppearanceBaseSchema.partial().strict().optional(),
     appearance: appearanceSettingsSchema.partial().strict().optional(),
+    shortcuts: shortcutSettingsSchema.partial().strict().optional(),
     privacy: privacySettingsSchema.partial().strict().optional(),
   })
   .strict()

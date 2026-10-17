@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { initialPlayerState } from '@shared/contracts/player'
-import { keyToAction, type KeymapContext } from '@renderer/features/player/player-keymap'
+import {
+  keyToAction,
+  shouldHandleWhileTyping,
+  type KeymapContext,
+} from '@renderer/features/player/player-keymap'
+import { assignBinding, bindingIndex, effectiveShortcuts } from '@shared/settings/shortcuts'
 import { formatDelay, languageName, trackLabel } from '@renderer/features/player/track-label'
 
 const key = (
@@ -70,9 +75,25 @@ describe('keyToAction', () => {
     expect(keyToAction(key('B', { shiftKey: true }), ctx())).toEqual({ type: 'toggle-bookmarks' })
   })
 
-  it('ignores keys with Ctrl or Alt and unknown keys', () => {
-    expect(keyToAction(key('k', { ctrlKey: true }), ctx())).toBeNull()
+  it('ignores unbound keys and opens the palette with Ctrl+K', () => {
+    expect(keyToAction(key('q', { ctrlKey: true }), ctx())).toBeNull()
     expect(keyToAction(key('q'), ctx())).toBeNull()
+    expect(keyToAction(key('k', { ctrlKey: true }), ctx())).toEqual({ type: 'command-palette' })
+  })
+
+  it('follows the user shortcuts', () => {
+    const bindings = bindingIndex(effectiveShortcuts(assignBinding({}, 'mute', 'Q')), 'player')
+    expect(keyToAction(key('q'), ctx({ bindings }))).toEqual({ type: 'toggle-mute' })
+    expect(keyToAction(key('m'), ctx({ bindings }))).toEqual({ type: 'toggle-mute' })
+    const moved = bindingIndex(effectiveShortcuts(assignBinding({}, 'screenshot', 'M')), 'player')
+    expect(keyToAction(key('m'), ctx({ bindings: moved }))).toEqual({ type: 'screenshot' })
+  })
+
+  it('leaves typing and text-editing keys to text fields', () => {
+    expect(shouldHandleWhileTyping(key('k'))).toBe(false)
+    expect(shouldHandleWhileTyping(key(' '))).toBe(false)
+    expect(shouldHandleWhileTyping(key('v', { ctrlKey: true }))).toBe(false)
+    expect(shouldHandleWhileTyping(key('k', { ctrlKey: true }))).toBe(true)
   })
 })
 

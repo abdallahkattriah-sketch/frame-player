@@ -160,7 +160,7 @@ export function LibraryBrowser({
       )}
       {items === null ? (
         <div
-          className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-5"
+          className="grid grid-cols-[repeat(auto-fill,minmax(var(--frame-poster-width),1fr))] gap-5"
           aria-label="Loading"
         >
           {Array.from({ length: 12 }, (_, i) => (

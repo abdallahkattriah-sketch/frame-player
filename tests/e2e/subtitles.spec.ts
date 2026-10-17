@@ -63,7 +63,7 @@ test('local discovery, provider setup, search with one failing provider, safe do
   })
   try {
     const page = await app.firstWindow()
-    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('button', { name: 'Settings', exact: true }).click()
 
     // Provider keys are stored encrypted; Test reports real results from the (mock) API.
     const os = page.getByTestId('provider-opensubtitles')

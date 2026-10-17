@@ -143,7 +143,7 @@ test('subtitle studio applies profiles without touching subtitle files', async (
 
     // Settings shows the same profiles with a preview; the player keeps playing normally.
     const main = await app.firstWindow()
-    await main.getByRole('button', { name: 'Settings' }).click()
+    await main.getByRole('button', { name: 'Settings', exact: true }).click()
     await expect(main.getByTestId('subtitle-preview')).toBeVisible()
     await expect(main.getByLabel('Subtitle profile')).toHaveValue('high-contrast')
 

@@ -45,3 +45,21 @@ html[data-surface='overlay'] body {
   outline: 2px solid var(--frame-accent);
   outline-offset: 2px;
 }
+
+/* Animation settings: "reduced" keeps loading spinners but shortens movement; "off" stops all. */
+html[data-motion='reduced'] *,
+html[data-motion='reduced'] *::before,
+html[data-motion='reduced'] *::after {
+  transition-duration: 60ms !important;
+}
+html[data-motion='off'] *,
+html[data-motion='off'] *::before,
+html[data-motion='off'] *::after {
+  transition: none !important;
+  animation: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-motion='full'] * {
+    transition-duration: 60ms !important;
+  }
+}

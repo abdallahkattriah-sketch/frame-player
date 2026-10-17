@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { LibraryItem } from '@shared/contracts/library'
 import { AppShell } from '@renderer/components/shell/AppShell'
+import { MainCommandPalette } from './MainCommandPalette'
+import { useAppShortcuts } from './use-app-shortcuts'
 import type { NavItemId } from '@renderer/components/shell/nav-items'
 import { HomeView } from '@renderer/features/home/HomeView'
 import { SettingsView } from '@renderer/features/settings/SettingsView'
@@ -22,7 +24,22 @@ export function App() {
   const [matchRequest, setMatchRequest] = useState<MatchRequest | null>(null)
   const [detailsItem, setDetailsItem] = useState<LibraryItem | null>(null)
   const [subtitleItem, setSubtitleItem] = useState<LibraryItem | null>(null)
+  const [showPalette, setShowPalette] = useState(false)
   const query = useDebounced(search.trim(), 200)
+
+  const navigate = useCallback((id: NavItemId) => {
+    setActiveView(id)
+    if (id === 'home' || id === 'history' || id === 'settings') setSearch('')
+  }, [])
+  const openPalette = useCallback(() => setShowPalette(true), [])
+  const openSettings = useCallback(() => navigate('settings'), [navigate])
+  useAppShortcuts({
+    onCommandPalette: openPalette,
+    onOpenSettings: openSettings,
+    enabled: !showPalette,
+  })
+  // The player can ask for Settings (e.g. its open-settings shortcut).
+  useEffect(() => window.frame.app.onNavigate((view) => navigate(view)), [navigate])
 
   const metadataActions = useMemo<MetadataActions>(
     () => ({
@@ -58,10 +75,7 @@ export function App() {
     <MetadataActionsContext.Provider value={metadataActions}>
       <AppShell
         activeView={activeView}
-        onNavigate={(id) => {
-          setActiveView(id)
-          if (id === 'home' || id === 'history' || id === 'settings') setSearch('')
-        }}
+        onNavigate={navigate}
         search={search}
         onSearchChange={setSearch}
         aside={
@@ -84,6 +98,9 @@ export function App() {
           isEpisode={subtitleItem.kind === 'episode'}
           onClose={() => setSubtitleItem(null)}
         />
+      )}
+      {showPalette && (
+        <MainCommandPalette onNavigate={navigate} onClose={() => setShowPalette(false)} />
       )}
       {matchRequest && (
         <MatchDialog

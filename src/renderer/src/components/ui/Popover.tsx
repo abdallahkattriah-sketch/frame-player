@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
 interface PopoverProps {
   /** Accessible name of the trigger button. */
@@ -7,11 +7,31 @@ interface PopoverProps {
   children: ReactNode
   align?: 'start' | 'end'
   className?: string
+  /** Controlled open state (e.g. opened by a keyboard shortcut). */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 /** A button that toggles a panel above it. Closes on outside click or Escape. */
-export function Popover({ label, trigger, children, align = 'end', className }: PopoverProps) {
-  const [open, setOpen] = useState(false)
+export function Popover({
+  label,
+  trigger,
+  children,
+  align = 'end',
+  className,
+  open: controlledOpen,
+  onOpenChange,
+}: PopoverProps) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const open = controlledOpen ?? uncontrolledOpen
+  const setOpen = useCallback(
+    (next: boolean | ((current: boolean) => boolean)) => {
+      const value = typeof next === 'function' ? next(open) : next
+      setUncontrolledOpen(value)
+      onOpenChange?.(value)
+    },
+    [open, onOpenChange],
+  )
   const rootRef = useRef<HTMLDivElement>(null)
   const panelId = useId()
 
@@ -32,7 +52,7 @@ export function Popover({ label, trigger, children, align = 'end', className }: 
       window.removeEventListener('pointerdown', onPointerDown)
       window.removeEventListener('keydown', onKeyDown, true)
     }
-  }, [open])
+  }, [open, setOpen])
 
   return (
     <div ref={rootRef} className="relative">

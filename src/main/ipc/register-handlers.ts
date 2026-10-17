@@ -30,6 +30,16 @@ import { SUBTITLE_EXTENSIONS } from '../subtitles/subtitle-content'
 import { parseSubtitleName } from '../subtitles/local-discovery'
 import { basename, dirname, extname } from 'node:path'
 import { handle } from './handle'
+import { builtInThemes } from '@shared/settings/theme'
+import {
+  parseShortcutFile,
+  parseThemeFile,
+  readSmallTextFile,
+  shortcutsToFile,
+  themeToFile,
+  writeTextFile,
+} from '../application/settings-files'
+import type { AppSettings } from '@shared/settings/schema'
 import type { BookmarkService } from '../application/bookmark-service'
 import type { ThumbnailService } from '../media-engine/thumbnail-service'
 import { bookmarkEditSchema, bookmarkIdSchema } from '@shared/contracts/bookmarks'
@@ -47,6 +57,8 @@ export interface IpcDependencies {
   thumbnails: ThumbnailService
   bookmarks: BookmarkService
   onLibraryChanged: () => void
+  onSettingsChanged: (settings: AppSettings) => void
+  showMainView: (view: 'settings') => void
 }
 
 const folderId = z.number().int().positive()
@@ -100,16 +112,104 @@ export function getAppInfo(): AppInfo {
 
 const noArgs = z.tuple([])
 
+const jsonFilters = (name: string) => [{ name, extensions: ['json'] }]
+
+async function pickFileToOpen(title: string, filterName: string): Promise<string | null> {
+  const parent = BrowserWindow.getFocusedWindow()
+  const options: Electron.OpenDialogOptions = {
+    title,
+    properties: ['openFile'],
+    filters: jsonFilters(filterName),
+  }
+  const result = parent
+    ? await dialog.showOpenDialog(parent, options)
+    : await dialog.showOpenDialog(options)
+  return result.canceled ? null : (result.filePaths[0] ?? null)
+}
+
+async function pickFileToSave(
+  title: string,
+  defaultName: string,
+  filterName: string,
+): Promise<string | null> {
+  const parent = BrowserWindow.getFocusedWindow()
+  const options: Electron.SaveDialogOptions = {
+    title,
+    defaultPath: defaultName,
+    filters: jsonFilters(filterName),
+  }
+  const result = parent
+    ? await dialog.showSaveDialog(parent, options)
+    : await dialog.showSaveDialog(options)
+  return result.canceled ? null : (result.filePath ?? null)
+}
+
+/** File names from theme names: letters, digits, spaces and dashes only. */
+const safeFileName = (name: string) => name.replace(/[^\p{L}\p{N} -]+/gu, '').trim() || 'theme'
+
 export function registerIpcHandlers(deps: IpcDependencies): void {
   handle(IpcChannel.AppGetInfo, noArgs, () => getAppInfo())
   handle(IpcChannel.AppGetStartupStatus, noArgs, () => deps.startupStatus)
+  handle(IpcChannel.AppShowSettings, noArgs, () => deps.showMainView('settings'))
 
   handle(IpcChannel.SettingsGet, noArgs, () => deps.settings.get())
   handle(IpcChannel.SettingsUpdate, z.tuple([settingsPatchSchema]), ([patch]) => {
     const updated = deps.settings.update(patch)
+    deps.onSettingsChanged(updated)
     // Subtitle style edits show on the playing video right away.
     if (patch.subtitleStyle) void deps.player.applySubtitleStyle()
     return updated
+  })
+
+  handle(IpcChannel.ShortcutsExport, noArgs, async () => {
+    const path = await pickFileToSave('Export shortcuts', 'frame-shortcuts.json', 'Frame shortcuts')
+    if (!path) return false
+    await writeTextFile(path, shortcutsToFile(deps.settings.get().shortcuts.bindings))
+    return true
+  })
+  handle(IpcChannel.ShortcutsImport, noArgs, async () => {
+    const path = await pickFileToOpen('Import shortcuts', 'Frame shortcuts')
+    if (!path) return { imported: false }
+    const text = await readSmallTextFile(path)
+    if (!text.ok) return { imported: false, error: text.error }
+    const parsed = parseShortcutFile(text.value)
+    if (!parsed.ok) return { imported: false, error: parsed.error }
+    deps.onSettingsChanged(deps.settings.update({ shortcuts: { bindings: parsed.value } }))
+    return { imported: true }
+  })
+  handle(IpcChannel.ThemeExport, z.tuple([z.string().max(64)]), async ([themeId]) => {
+    const { customThemes } = deps.settings.get().appearance
+    const theme = [...builtInThemes, ...customThemes].find((t) => t.id === themeId)
+    if (!theme) return false
+    const path = await pickFileToSave(
+      'Export theme',
+      `${safeFileName(theme.name)}.frame-theme.json`,
+      'Frame theme',
+    )
+    if (!path) return false
+    await writeTextFile(path, themeToFile(theme))
+    return true
+  })
+  handle(IpcChannel.ThemeImport, noArgs, async () => {
+    const path = await pickFileToOpen('Import theme', 'Frame theme')
+    if (!path) return {}
+    const text = await readSmallTextFile(path)
+    if (!text.ok) return { error: text.error }
+    const parsed = parseThemeFile(text.value)
+    if (!parsed.ok) return { error: parsed.error }
+    const { customThemes } = deps.settings.get().appearance
+    if (customThemes.length >= 30) return { error: 'Delete a custom theme first (30 at most).' }
+    const theme = {
+      id: `custom-${Date.now().toString(36)}`,
+      name: parsed.value.name,
+      colors: parsed.value.colors,
+    }
+    deps.onSettingsChanged(
+      deps.settings.update({
+        appearance: { customThemes: [...customThemes, theme], themeId: theme.id },
+      }),
+    )
+    return { theme }
   })
 
   handle(IpcChannel.CredentialsStatus, noArgs, () => deps.credentials.status())
@@ -288,7 +388,7 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
       : await dialog.showOpenDialog(options)
     const folder = result.filePaths[0]
     if (result.canceled || !folder) return null
-    deps.settings.update({ subtitles: { folder, saveLocation: 'folder' } })
+    deps.onSettingsChanged(deps.settings.update({ subtitles: { folder, saveLocation: 'folder' } }))
     return folder
   })
 

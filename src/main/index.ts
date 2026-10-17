@@ -20,6 +20,7 @@ const rendererHtml = join(__dirname, '../renderer/index.html')
 
 let services: AppServices | undefined
 let player: PlayerController | undefined
+let mainWindow: BrowserWindow | undefined
 
 const mpvPath = () =>
   resolveMpvPath({
@@ -50,6 +51,10 @@ function createMainWindow(): BrowserWindow {
 
   hardenWebContents(win.webContents, devServerUrl)
   win.once('ready-to-show', () => win.show())
+  win.on('closed', () => {
+    if (mainWindow === win) mainWindow = undefined
+  })
+  mainWindow = win
   void loadRoute(win, '/')
   return win
 }
@@ -146,7 +151,21 @@ if (!app.requestSingleInstanceLock()) {
       },
     })
 
-    registerIpcHandlers({ ...services, player, onLibraryChanged: notifyLibraryChanged })
+    registerIpcHandlers({
+      ...services,
+      player,
+      onLibraryChanged: notifyLibraryChanged,
+      onSettingsChanged: (settings) => broadcast(IpcChannel.SettingsChanged, settings),
+      showMainView: (view) => {
+        const win = mainWindow && !mainWindow.isDestroyed() ? mainWindow : createMainWindow()
+        if (win.isMinimized()) win.restore()
+        win.show()
+        win.focus()
+        const send = () => win.webContents.send(IpcChannel.AppNavigate, view)
+        if (win.webContents.isLoading()) win.webContents.once('did-finish-load', send)
+        else send()
+      },
+    })
     createMainWindow()
     openFromArgv(process.argv, process.cwd())
 

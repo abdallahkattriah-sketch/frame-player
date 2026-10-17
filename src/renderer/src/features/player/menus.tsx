@@ -80,7 +80,11 @@ export function AudioSubtitleMenu({
   onSearchOnline,
   onLoadFile,
   onOpenStyle,
+  open,
+  onOpenChange,
 }: {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   state: PlayerState
   onSearchOnline?: () => void
   onLoadFile?: () => void
@@ -89,7 +93,13 @@ export function AudioSubtitleMenu({
   const audio = state.tracks.filter((t) => t.type === 'audio')
   const subs = state.tracks.filter((t) => t.type === 'sub')
   return (
-    <Popover label="Audio and subtitles" trigger={<Languages size={18} />} className="w-72">
+    <Popover
+      label="Audio and subtitles"
+      trigger={<Languages size={18} />}
+      className="w-72"
+      open={open}
+      onOpenChange={onOpenChange}
+    >
       <div role="menu" className="max-h-96 overflow-y-auto">
         <MenuSection title="Audio">
           {audio.length === 0 ? (

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { LibraryItem } from '@shared/contracts/library'
+import { useSettings } from '@renderer/app/settings-context'
+import { posterWidths } from '@renderer/app/appearance'
 import { MediaCard, MediaRow } from './MediaCard'
 
-const CARD_MIN_WIDTH = 150
 const GAP = 20
 const ROW_HEIGHT = 44
 
@@ -30,11 +31,16 @@ function useWidth<T extends HTMLElement>() {
 /** Virtualized grid or list: only visible rows are rendered, so large libraries stay fast. */
 export function MediaCollection({ items, mode, onPlay }: MediaCollectionProps) {
   const [scrollRef, width] = useWidth<HTMLDivElement>()
+  const appearance = useSettings().settings?.appearance
+  const cardMinWidth = posterWidths[appearance?.posterSize ?? 'medium']
+  // Text grows with the text size setting; rows are sized to fit it.
+  const textScale = appearance?.fontScale ?? 1
   const columns =
-    mode === 'grid' ? Math.max(1, Math.floor((width + GAP) / (CARD_MIN_WIDTH + GAP))) : 1
+    mode === 'grid' ? Math.max(1, Math.floor((width + GAP) / (cardMinWidth + GAP))) : 1
   const cardWidth = (width - GAP * (columns - 1)) / columns
   // Poster (2:3) plus two lines of text.
-  const rowHeight = mode === 'grid' ? cardWidth * 1.5 + 56 + GAP : ROW_HEIGHT
+  const rowHeight =
+    mode === 'grid' ? cardWidth * 1.5 + 56 * textScale + GAP : Math.round(ROW_HEIGHT * textScale)
   const rowCount = Math.ceil(items.length / columns)
 
   const virtualizer = useVirtualizer({

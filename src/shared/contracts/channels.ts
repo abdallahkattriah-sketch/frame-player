@@ -4,8 +4,13 @@
 export const IpcChannel = {
   AppGetInfo: 'app:get-info',
   AppGetStartupStatus: 'app:get-startup-status',
+  AppShowSettings: 'app:show-settings',
   SettingsGet: 'settings:get',
   SettingsUpdate: 'settings:update',
+  ShortcutsExport: 'shortcuts:export',
+  ShortcutsImport: 'shortcuts:import',
+  ThemeExport: 'theme:export',
+  ThemeImport: 'theme:import',
   CredentialsStatus: 'credentials:status',
   CredentialsSet: 'credentials:set',
   CredentialsDelete: 'credentials:delete',
@@ -50,6 +55,8 @@ export const IpcChannel = {
   SubtitleLoadFile: 'subtitles:load-file',
   SubtitleChooseFolder: 'subtitles:choose-folder',
   /** Main → renderer pushes. */
+  SettingsChanged: 'settings:changed',
+  AppNavigate: 'app:navigate',
   PlayerStateChanged: 'player:state-changed',
   LibraryScanProgress: 'library:scan-progress',
   LibraryChanged: 'library:changed',

@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'ele
 import { IpcChannel } from '@shared/contracts/channels'
 import type { FrameApi } from '@shared/contracts/ipc'
 import type { PlayerState } from '@shared/contracts/player'
+import type { AppSettings } from '@shared/settings/schema'
 import type { ScanProgress } from '@shared/contracts/library'
 import type { MetadataStatus } from '@shared/contracts/metadata'
 import type { ProviderStatus } from '@shared/contracts/subtitles'
@@ -10,10 +11,21 @@ const api: FrameApi = {
   app: {
     getInfo: () => ipcRenderer.invoke(IpcChannel.AppGetInfo),
     getStartupStatus: () => ipcRenderer.invoke(IpcChannel.AppGetStartupStatus),
+    showSettings: () => ipcRenderer.invoke(IpcChannel.AppShowSettings),
+    onNavigate: (listener) => subscribe<'settings'>(IpcChannel.AppNavigate, listener),
   },
   settings: {
     get: () => ipcRenderer.invoke(IpcChannel.SettingsGet),
     update: (patch) => ipcRenderer.invoke(IpcChannel.SettingsUpdate, patch),
+    onChanged: (listener) => subscribe<AppSettings>(IpcChannel.SettingsChanged, listener),
+  },
+  shortcuts: {
+    exportFile: () => ipcRenderer.invoke(IpcChannel.ShortcutsExport),
+    importFile: () => ipcRenderer.invoke(IpcChannel.ShortcutsImport),
+  },
+  themes: {
+    exportFile: (themeId) => ipcRenderer.invoke(IpcChannel.ThemeExport, themeId),
+    importFile: () => ipcRenderer.invoke(IpcChannel.ThemeImport),
   },
   credentials: {
     status: () => ipcRenderer.invoke(IpcChannel.CredentialsStatus),

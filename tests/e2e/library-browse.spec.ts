@@ -39,7 +39,7 @@ async function addLibraryFolder(app: ElectronApplication, page: Page) {
   await app.evaluate(({ dialog }, chosen) => {
     dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [chosen] })) as never
   }, mediaRoot)
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page.getByRole('button', { name: 'Add folder' }).click()
   await expect(page.getByTestId('library-folder-status')).toHaveText('3 videos')
 }

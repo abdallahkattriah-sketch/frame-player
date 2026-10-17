@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { AppSettings, SettingsPatch } from '../settings/schema'
+import type { Theme } from '../settings/theme'
 import type { CredentialId, CredentialStoreStatus } from './credentials'
 import type { Bookmark, BookmarkEdit } from './bookmarks'
 import type { OpenMediaResult, PlayerCommand, PlayerState, ScreenshotResult } from './player'
@@ -53,10 +54,27 @@ export interface FrameApi {
   app: {
     getInfo: () => Promise<AppInfo>
     getStartupStatus: () => Promise<StartupStatus>
+    /** Brings the main window forward on its Settings view (e.g. from the player). */
+    showSettings: () => Promise<void>
+    /** The main window was asked to show a view. */
+    onNavigate: (listener: (view: 'settings') => void) => () => void
   }
   settings: {
     get: () => Promise<AppSettings>
     update: (patch: SettingsPatch) => Promise<AppSettings>
+    /** Fires in every window after settings change (e.g. theme edits apply everywhere). */
+    onChanged: (listener: (settings: AppSettings) => void) => () => void
+  }
+  shortcuts: {
+    /** Native save dialog; false if cancelled. */
+    exportFile: () => Promise<boolean>
+    /** Native open dialog; the file is validated before anything changes. */
+    importFile: () => Promise<{ imported: boolean; error?: string }>
+  }
+  themes: {
+    exportFile: (themeId: string) => Promise<boolean>
+    /** Adds the imported theme to the custom themes and switches to it. */
+    importFile: () => Promise<{ theme?: Theme; error?: string }>
   }
   credentials: {
     status: () => Promise<CredentialStoreStatus>

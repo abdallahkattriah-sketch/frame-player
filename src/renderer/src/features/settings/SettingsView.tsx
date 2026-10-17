@@ -2,6 +2,8 @@ import { LibraryFoldersSection } from '@renderer/features/library/LibraryFolders
 import { AboutSection } from './AboutSection'
 import { MetadataSection } from './MetadataSection'
 import { PlaybackSection } from './PlaybackSection'
+import { AppearanceSection } from './AppearanceSection'
+import { KeyboardSection } from './KeyboardSection'
 import { SubtitlesSection } from './SubtitlesSection'
 import { SubtitleAppearanceSection } from './SubtitleAppearanceSection'
 
@@ -11,6 +13,8 @@ export function SettingsView() {
       <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
       <LibraryFoldersSection />
       <PlaybackSection />
+      <AppearanceSection />
+      <KeyboardSection />
       <MetadataSection />
       <SubtitlesSection />
       <SubtitleAppearanceSection />
