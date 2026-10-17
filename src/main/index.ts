@@ -1,9 +1,13 @@
-import { app, BrowserWindow, session } from 'electron'
+import { app, BrowserWindow, dialog, session } from 'electron'
 import { join } from 'node:path'
 import { hardenSession, hardenWebContents, secureWebPreferences } from './security/web-security'
 import { registerIpcHandlers } from './ipc/register-handlers'
+import { configureUserDataDir, resolveAppPaths } from './application/app-paths'
+import { bootstrapServices, type AppServices } from './application/bootstrap'
 
 const devServerUrl = app.isPackaged ? undefined : process.env['ELECTRON_RENDERER_URL']
+
+let services: AppServices | undefined
 
 function createMainWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -29,6 +33,9 @@ function createMainWindow(): BrowserWindow {
   return win
 }
 
+// Must run before the single-instance lock, which is keyed on the userData directory.
+configureUserDataDir()
+
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
@@ -42,7 +49,17 @@ if (!app.requestSingleInstanceLock()) {
 
   void app.whenReady().then(() => {
     hardenSession(session.defaultSession)
-    registerIpcHandlers()
+
+    try {
+      services = bootstrapServices(resolveAppPaths())
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      dialog.showErrorBox('Frame could not start', message)
+      app.exit(1)
+      return
+    }
+
+    registerIpcHandlers(services)
     createMainWindow()
 
     app.on('activate', () => {
@@ -52,5 +69,10 @@ if (!app.requestSingleInstanceLock()) {
 
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit()
+  })
+
+  app.on('will-quit', () => {
+    services?.db.close()
+    services = undefined
   })
 }
