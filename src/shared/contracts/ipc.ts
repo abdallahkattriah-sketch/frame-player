@@ -13,6 +13,15 @@ import type {
   PlayRequest,
   ScanProgress,
 } from './library'
+import type {
+  ItemMetadata,
+  MatchCandidate,
+  MatchTarget,
+  MetadataMediaType,
+  MetadataSearch,
+  MetadataStatus,
+  TokenTestResult,
+} from './metadata'
 
 export { IpcChannel, type IpcChannelName } from './channels'
 
@@ -80,5 +89,19 @@ export interface FrameApi {
   history: {
     setWatched: (item: ItemRef, watched: boolean) => Promise<void>
     remove: (item: ItemRef) => Promise<void>
+  }
+  metadata: {
+    status: () => Promise<MetadataStatus>
+    /** Checks the saved TMDB token against TMDB. */
+    testToken: () => Promise<TokenTestResult>
+    identifyNow: () => Promise<void>
+    search: (search: MetadataSearch) => Promise<MatchCandidate[]>
+    candidates: (target: MatchTarget) => Promise<MatchCandidate[]>
+    apply: (target: MatchTarget, tmdbId: number, mediaType: MetadataMediaType) => Promise<void>
+    /** "None of these": the target will not be matched automatically again. */
+    reject: (target: MatchTarget) => Promise<void>
+    reidentify: (target: MatchTarget) => Promise<void>
+    item: (target: MatchTarget) => Promise<ItemMetadata>
+    onStatus: (listener: (status: MetadataStatus) => void) => () => void
   }
 }

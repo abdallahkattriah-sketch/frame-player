@@ -28,10 +28,20 @@ export const IpcChannel = {
   LibraryShowInFolder: 'library:show-in-folder',
   HistorySetWatched: 'history:set-watched',
   HistoryRemove: 'history:remove',
+  MetadataStatus: 'metadata:status',
+  MetadataTestToken: 'metadata:test-token',
+  MetadataIdentifyNow: 'metadata:identify-now',
+  MetadataSearch: 'metadata:search',
+  MetadataCandidates: 'metadata:candidates',
+  MetadataApply: 'metadata:apply',
+  MetadataReject: 'metadata:reject',
+  MetadataReidentify: 'metadata:reidentify',
+  MetadataItem: 'metadata:item',
   /** Main → renderer pushes. */
   PlayerStateChanged: 'player:state-changed',
   LibraryScanProgress: 'library:scan-progress',
   LibraryChanged: 'library:changed',
+  MetadataStatusChanged: 'metadata:status-changed',
 } as const
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel]

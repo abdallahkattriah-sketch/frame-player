@@ -43,9 +43,17 @@ export const uiSettingsSchema = z.object({
     .refine((prefs) => Object.keys(prefs).length <= 50, 'Too many view preferences'),
 })
 
+export const metadataSettingsSchema = z.object({
+  /** TMDB language for titles and overviews, e.g. "en-US" or "ar-SA". */
+  language: z.string().regex(/^[a-z]{2}(?:-[A-Z]{2})?$/, 'Use a code like en-US'),
+  /** Identify new files automatically after scans. */
+  autoIdentify: z.boolean(),
+})
+
 export const appSettingsSchema = z.object({
   playback: playbackSettingsSchema,
   library: librarySettingsSchema,
+  metadata: metadataSettingsSchema,
   ui: uiSettingsSchema,
   appearance: appearanceSettingsSchema,
   privacy: privacySettingsSchema,
@@ -65,6 +73,7 @@ export const defaultSettings: AppSettings = {
     hardwareDecoding: 'auto-safe',
   },
   library: { videoExtensions: [...defaultVideoExtensions] },
+  metadata: { language: 'en-US', autoIdentify: true },
   ui: { viewPreferences: {} },
   appearance: { themeId: 'midnight-cinema' },
   privacy: { onlineMetadataEnabled: true, onlineSubtitlesEnabled: true },
@@ -76,6 +85,7 @@ export const settingsPatchSchema = z
     playback: playbackSettingsSchema.partial().strict().optional(),
     library: librarySettingsSchema.partial().strict().optional(),
     ui: uiSettingsSchema.partial().strict().optional(),
+    metadata: metadataSettingsSchema.partial().strict().optional(),
     appearance: appearanceSettingsSchema.partial().strict().optional(),
     privacy: privacySettingsSchema.partial().strict().optional(),
   })

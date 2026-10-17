@@ -30,6 +30,8 @@ export interface TmdbClientOptions {
   getToken: () => string | undefined
   /** e.g. "en-US". */
   getLanguage: () => string
+  /** Test seam: a local mock server in development builds only. */
+  apiBase?: string
 }
 
 /** A v3 API key is 32 hex characters; anything else is treated as a v4 Read Access Token. */
@@ -103,7 +105,7 @@ export class TmdbClient {
   ): Promise<z.infer<S>> {
     const token = this.options.getToken()
     if (!token) throw new TmdbNotConfiguredError()
-    const url = new URL(TMDB_API_BASE + path)
+    const url = new URL((this.options.apiBase ?? TMDB_API_BASE) + path)
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v)
     if (localized) url.searchParams.set('language', this.options.getLanguage())
 

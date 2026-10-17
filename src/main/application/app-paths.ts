@@ -7,6 +7,16 @@ export interface AppPaths {
   backups: string
   credentials: string
   screenshots: string
+  artwork: string
+}
+
+/** Endpoints a development build may redirect (tests use a local mock TMDB). */
+export function devOverrides(): { tmdbApiBase?: string; tmdbImageBase?: string } {
+  if (app.isPackaged) return {}
+  return {
+    tmdbApiBase: process.env['FRAME_TMDB_API_BASE'] || undefined,
+    tmdbImageBase: process.env['FRAME_TMDB_IMAGE_BASE'] || undefined,
+  }
 }
 
 function userDataOverride(): string | undefined {
@@ -30,6 +40,7 @@ export function resolveAppPaths(): AppPaths {
     database: join(userData, 'frame.db'),
     backups: join(userData, 'backups'),
     credentials: join(userData, 'credentials.json'),
+    artwork: join(userData, 'cache', 'artwork'),
     // Redirected along with user data so tests never write into the user's Pictures folder.
     screenshots: userDataOverride()
       ? join(userData, 'screenshots')

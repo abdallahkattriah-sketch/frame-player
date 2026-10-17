@@ -13,16 +13,17 @@ export function episodeCode(
     : `S${pad(item.season)}E${pad(item.episode)}${end}`
 }
 
+/** TMDB title when matched, otherwise what the file name says. */
 export function displayTitle(item: LibraryItem): string {
-  return item.title ?? item.fileName
+  return item.metadataTitle ?? item.title ?? item.fileName
 }
 
 /** Secondary line: year for movies, episode code and title for episodes. */
 export function subtitleLine(item: LibraryItem): string {
   if (item.kind === 'episode') {
-    return [episodeCode(item), item.episodeTitle].filter(Boolean).join(' · ')
+    return [episodeCode(item), item.episodeName ?? item.episodeTitle].filter(Boolean).join(' · ')
   }
-  return [item.year, item.resolution].filter(Boolean).join(' · ')
+  return [item.metadataYear ?? item.year, item.resolution].filter(Boolean).join(' · ')
 }
 
 /** Fraction watched (0–1), or null when unknown. Completed items count as 1. */

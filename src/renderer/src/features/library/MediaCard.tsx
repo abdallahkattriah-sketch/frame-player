@@ -1,6 +1,7 @@
 import { useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { CheckCircle2, Film, Heart, Tv } from 'lucide-react'
 import type { LibraryItem } from '@shared/contracts/library'
+import { Artwork } from '@renderer/components/ui/Artwork'
 import { ItemMenu } from './ItemMenu'
 import {
   displayTitle,
@@ -83,7 +84,13 @@ export function MediaCard({ item, onPlay }: ItemProps) {
       }`}
     >
       <div className="relative aspect-[2/3] overflow-hidden rounded-md border border-border shadow-sm transition-transform group-hover:-translate-y-0.5 group-hover:border-subtle">
-        <Placeholder item={item} />
+        <Artwork
+          kind="poster"
+          path={item.posterPath}
+          alt=""
+          className="h-full w-full object-cover"
+          fallback={<Placeholder item={item} />}
+        />
         <div className="absolute inset-x-0 bottom-0">
           <ProgressBar item={item} />
         </div>

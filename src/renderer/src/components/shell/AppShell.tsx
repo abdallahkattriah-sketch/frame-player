@@ -9,6 +9,8 @@ interface AppShellProps {
   onNavigate: (id: NavItemId) => void
   search: string
   onSearchChange: (value: string) => void
+  /** Optional side panel (e.g. details) beside the main content. */
+  aside?: ReactNode
   children: ReactNode
 }
 
@@ -17,6 +19,7 @@ export function AppShell({
   onNavigate,
   search,
   onSearchChange,
+  aside,
   children,
 }: AppShellProps) {
   return (
@@ -24,7 +27,10 @@ export function AppShell({
       <Sidebar activeView={activeView} onNavigate={onNavigate} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Toolbar search={search} onSearchChange={onSearchChange} />
-        <main className="min-h-0 flex-1 overflow-auto p-6">{children}</main>
+        <div className="flex min-h-0 flex-1">
+          <main className="min-w-0 flex-1 overflow-auto p-6">{children}</main>
+          {aside}
+        </div>
         <MiniPlayer />
       </div>
     </div>

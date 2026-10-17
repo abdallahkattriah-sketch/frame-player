@@ -2,7 +2,8 @@ import { app, BrowserWindow, dialog, session } from 'electron'
 import { join } from 'node:path'
 import { hardenSession, hardenWebContents, secureWebPreferences } from './security/web-security'
 import { registerIpcHandlers } from './ipc/register-handlers'
-import { configureUserDataDir, resolveAppPaths } from './application/app-paths'
+import { configureUserDataDir, devOverrides, resolveAppPaths } from './application/app-paths'
+import { handleArtworkProtocol, registerArtworkScheme } from './metadata/artwork-protocol'
 import { bootstrapServices, type AppServices } from './application/bootstrap'
 import { PlayerController } from './application/player-controller'
 import { resolveMpvPath } from './media-engine/mpv-locator'
@@ -49,6 +50,8 @@ function openFromArgv(argv: readonly string[], cwd: string) {
 
 // Must run before the single-instance lock, which is keyed on the userData directory.
 configureUserDataDir()
+// Custom schemes must be registered before the app is ready.
+registerArtworkScheme()
 
 if (!app.requestSingleInstanceLock()) {
   app.quit()
@@ -67,13 +70,23 @@ if (!app.requestSingleInstanceLock()) {
 
     const paths = resolveAppPaths()
     try {
-      services = bootstrapServices(paths, {
-        onScanProgress: (progress) => {
-          broadcast(IpcChannel.LibraryScanProgress, progress)
-          if (progress.status !== 'scanning') notifyLibraryChanged()
+      services = bootstrapServices(
+        paths,
+        {
+          onScanProgress: (progress) => {
+            broadcast(IpcChannel.LibraryScanProgress, progress)
+            if (progress.status === 'scanning') return
+            notifyLibraryChanged()
+            // New files get identified after each completed scan, if enabled.
+            if (progress.status === 'complete' && services?.settings.get().metadata.autoIdentify) {
+              void services.metadata.identifyPending()
+            }
+          },
+          onLibraryChanged: () => notifyLibraryChanged(),
+          onMetadataStatus: (status) => broadcast(IpcChannel.MetadataStatusChanged, status),
         },
-        onLibraryChanged: () => notifyLibraryChanged(),
-      })
+        devOverrides(),
+      )
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       dialog.showErrorBox('Frame could not start', message)
@@ -111,6 +124,19 @@ if (!app.requestSingleInstanceLock()) {
     createMainWindow()
     openFromArgv(process.argv, process.cwd())
 
+    handleArtworkProtocol(services.artwork)
+    // TMDB terms: cached content may not be kept longer than 6 months.
+    const startedServices = services
+    void startedServices.artwork.purgeExpired()
+    void startedServices.metadata
+      .maintainCache()
+      .catch((e: unknown) => console.warn(`metadata: cache maintenance failed: ${String(e)}`))
+      .then(() => {
+        if (startedServices.settings.get().metadata.autoIdentify) {
+          void startedServices.metadata.identifyPending()
+        }
+      })
+
     // Folders with automatic rescanning are refreshed on startup and then watched.
     for (const folder of services.library.listFolders()) {
       if (folder.autoRescan) void services.library.scan(folder.id)
@@ -131,7 +157,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('before-quit', (event) => {
     if (backgroundWorkStopped || !services) return
     event.preventDefault()
-    const stop = services.library.dispose()
+    const stop = Promise.all([services.library.dispose(), services.metadata.dispose()])
     const timeout = new Promise((r) => setTimeout(r, 3000))
     void Promise.race([stop, timeout]).finally(() => {
       backgroundWorkStopped = true

@@ -18,6 +18,8 @@ import {
 } from '@shared/contracts/library'
 import type { LibraryQueryRepository } from '../database/repositories/library-query-repository'
 import type { HistoryRepository } from '../database/repositories/history-repository'
+import type { MetadataService } from '../metadata/metadata-service'
+import { matchTargetSchema, metadataSearchSchema } from '@shared/contracts/metadata'
 import { handle } from './handle'
 
 export interface IpcDependencies {
@@ -28,6 +30,7 @@ export interface IpcDependencies {
   library: LibraryService
   libraryQuery: LibraryQueryRepository
   historyRepository: HistoryRepository
+  metadata: MetadataService
   onLibraryChanged: () => void
 }
 
@@ -97,6 +100,8 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
     z.tuple([credentialIdSchema, credentialSecretSchema]),
     ([id, secret]) => {
       deps.credentials.set(id, secret)
+      // A new TMDB token: identify whatever is still unidentified.
+      if (id === 'tmdb.accessToken') void deps.metadata.identifyPending()
       return deps.credentials.status()
     },
   )
@@ -172,6 +177,32 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
     deps.historyRepository.setWatched(item.pathKey, item.path, watched, new Date().toISOString())
     deps.onLibraryChanged()
   })
+  handle(IpcChannel.MetadataStatus, noArgs, () => deps.metadata.status())
+  handle(IpcChannel.MetadataTestToken, noArgs, () => deps.metadata.testToken())
+  handle(IpcChannel.MetadataIdentifyNow, noArgs, () => {
+    void deps.metadata.identifyPending()
+  })
+  handle(IpcChannel.MetadataSearch, z.tuple([metadataSearchSchema]), ([search]) =>
+    deps.metadata.search(search),
+  )
+  handle(IpcChannel.MetadataCandidates, z.tuple([matchTargetSchema]), ([target]) =>
+    deps.metadata.candidatesFor(target),
+  )
+  handle(
+    IpcChannel.MetadataApply,
+    z.tuple([matchTargetSchema, z.number().int().positive(), z.enum(['movie', 'tv'])]),
+    ([target, tmdbId, mediaType]) => deps.metadata.applyMatch(target, tmdbId, mediaType),
+  )
+  handle(IpcChannel.MetadataReject, z.tuple([matchTargetSchema]), ([target]) =>
+    deps.metadata.reject(target),
+  )
+  handle(IpcChannel.MetadataReidentify, z.tuple([matchTargetSchema]), ([target]) =>
+    deps.metadata.reidentify(target),
+  )
+  handle(IpcChannel.MetadataItem, z.tuple([matchTargetSchema]), ([target]) =>
+    deps.metadata.itemMetadata(target),
+  )
+
   handle(IpcChannel.HistoryRemove, z.tuple([itemRefSchema]), ([ref]) => {
     const item = resolveItem(deps, ref)
     if (!item) return

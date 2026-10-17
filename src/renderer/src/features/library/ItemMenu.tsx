@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { MoreHorizontal } from 'lucide-react'
 import type { LibraryItem } from '@shared/contracts/library'
 import { displayTitle, itemRef } from './item-format'
+import { matchRequestFor, useMetadataActions } from '@renderer/features/metadata/metadata-actions'
 
 interface ItemMenuProps {
   item: LibraryItem
@@ -15,6 +16,7 @@ interface ItemMenuProps {
 export function ItemMenu({ item, open, onOpenChange, onPlay, className }: ItemMenuProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const metadataActions = useMetadataActions()
 
   useEffect(() => {
     if (!open) return
@@ -39,6 +41,19 @@ export function ItemMenu({ item, open, onOpenChange, onPlay, className }: ItemMe
       action: () => window.frame.history.setWatched(itemRef(item), !watched),
     },
   ]
+  const match = matchRequestFor(item)
+  if (match) {
+    actions.push({ label: 'Details', action: () => metadataActions.openDetails(item) })
+    actions.push({
+      label:
+        item.matchStatus === 'matched'
+          ? item.kind === 'episode'
+            ? 'Change show match…'
+            : 'Change match…'
+          : 'Identify…',
+      action: () => metadataActions.openMatch(match),
+    })
+  }
   if (item.fileId !== null) {
     const id = item.fileId
     actions.push({

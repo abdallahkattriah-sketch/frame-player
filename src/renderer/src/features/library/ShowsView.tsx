@@ -4,29 +4,44 @@ import type { LibraryShow } from '@shared/contracts/library'
 import { LibraryBrowser, playItems } from './LibraryBrowser'
 import { episodeCode } from './item-format'
 import { useLibraryQuery, useShows } from './use-library'
+import { Artwork } from '@renderer/components/ui/Artwork'
+import { useMetadataActions } from '@renderer/features/metadata/metadata-actions'
+
+const showTitle = (show: LibraryShow) => show.metadataTitle ?? show.title
 
 function ShowCard({ show, onOpen }: { show: LibraryShow; onOpen: () => void }) {
   const seasons =
     show.seasons.length > 0
       ? `${show.seasons.length} ${show.seasons.length === 1 ? 'season' : 'seasons'}`
       : null
+  const title = showTitle(show)
   return (
     <button
       type="button"
       onClick={onOpen}
-      aria-label={`Open ${show.title}`}
+      aria-label={`Open ${title}`}
       data-testid="show-card"
       className="group flex flex-col gap-2 text-left"
     >
-      <div className="flex aspect-[2/3] w-full flex-col justify-between rounded-md border border-border bg-elevated p-3 transition-transform group-hover:-translate-y-0.5 group-hover:border-subtle">
-        <Tv size={20} className="text-subtle" aria-hidden />
-        <div className="line-clamp-4 text-sm font-medium text-muted" dir="auto">
-          {show.title}
-        </div>
+      <div className="aspect-[2/3] w-full overflow-hidden rounded-md border border-border bg-elevated transition-transform group-hover:-translate-y-0.5 group-hover:border-subtle">
+        <Artwork
+          kind="poster"
+          path={show.posterPath}
+          alt=""
+          className="h-full w-full object-cover"
+          fallback={
+            <div className="flex h-full flex-col justify-between p-3">
+              <Tv size={20} className="text-subtle" aria-hidden />
+              <div className="line-clamp-4 text-sm font-medium text-muted" dir="auto">
+                {title}
+              </div>
+            </div>
+          }
+        />
       </div>
       <div className="min-w-0 px-0.5">
         <div className="truncate text-sm font-medium" dir="auto">
-          {show.title}
+          {title}
         </div>
         <div className="truncate text-xs text-muted">
           {[
@@ -49,11 +64,12 @@ function ShowDetail({ show, onBack }: { show: LibraryShow; onBack: () => void })
     sort: 'episode',
   })
   const nextUp = episodes?.find((e) => !e.progress?.completed) ?? episodes?.[0]
+  const { openMatch } = useMetadataActions()
 
   return (
     <LibraryBrowser
       viewId="show-episodes"
-      title={show.title}
+      title={showTitle(show)}
       query={{ view: 'episodes', showKey: show.key }}
       defaults={{ mode: 'list', sort: 'episode', direction: 'asc' }}
       sortOptions={['episode', 'title', 'added']}
@@ -83,6 +99,21 @@ function ShowDetail({ show, onBack }: { show: LibraryShow; onBack: () => void })
               {episodeCode(nextUp) ?? ''}
             </button>
           )}
+          <button
+            type="button"
+            onClick={() =>
+              openMatch({
+                target: { showKey: show.key },
+                label: show.title,
+                query: show.title,
+                year: show.year,
+                mediaType: 'tv',
+              })
+            }
+            className="rounded-md border border-border px-2 py-1 text-sm hover:bg-elevated"
+          >
+            {show.matchStatus === 'matched' ? 'Change match…' : 'Identify…'}
+          </button>
         </div>
       }
     />

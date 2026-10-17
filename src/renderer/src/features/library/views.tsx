@@ -21,6 +21,7 @@ export function MoviesView({ search }: { search: string }) {
 const allMediaFilters: { view: LibraryView; label: string }[] = [
   { view: 'all', label: 'All' },
   { view: 'favorites', label: 'Favorites' },
+  { view: 'unmatched', label: 'Unmatched' },
   { view: 'missing', label: 'Missing files' },
 ]
 
@@ -39,7 +40,9 @@ export function AllMediaView({ search }: { search: string }) {
           ? 'No favorites yet. Use an item’s menu to add one.'
           : view === 'missing'
             ? 'No missing files.'
-            : libraryEmpty
+            : view === 'unmatched'
+              ? 'Everything is identified.'
+              : libraryEmpty
       }
       headerExtra={
         <div

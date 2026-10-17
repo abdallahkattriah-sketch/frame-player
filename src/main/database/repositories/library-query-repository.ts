@@ -263,6 +263,33 @@ export class LibraryQueryRepository {
     ).map((row) => row.r)
   }
 
+  /** What metadata matching needs to know about a file. */
+  getFileForMatch(id: number):
+    | {
+        pathKey: string
+        kind: string
+        showKey: string | null
+        season: number | null
+        episode: number | null
+      }
+    | undefined {
+    return this.db
+      .prepare(
+        `SELECT path_key AS pathKey, parsed_kind AS kind, lower(parsed_title) AS showKey,
+                parsed_season AS season, parsed_episode AS episode
+         FROM media_files WHERE id = ?`,
+      )
+      .get(id) as
+      | {
+          pathKey: string
+          kind: string
+          showKey: string | null
+          season: number | null
+          episode: number | null
+        }
+      | undefined
+  }
+
   getFile(id: number): { path: string; pathKey: string } | undefined {
     return this.db
       .prepare('SELECT path, path_key AS pathKey FROM media_files WHERE id = ?')

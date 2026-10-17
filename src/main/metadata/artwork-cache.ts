@@ -107,7 +107,8 @@ export class ArtworkCache {
 
     const base = this.options.getBaseUrl?.() ?? DEFAULT_BASE_URL
     const url = new URL(`${base.replace(/\/?$/, '/')}${size}${path}`)
-    if (url.protocol !== 'https:') return null
+    const loopback = url.hostname === '127.0.0.1' || url.hostname === 'localhost'
+    if (url.protocol !== 'https:' && !loopback) return null
     try {
       const { bytes, contentType } = await this.options.http.getBytes(url, { maxBytes: MAX_BYTES })
       const type = CONTENT_TYPES[contentType.split(';')[0]?.trim().toLowerCase() ?? '']

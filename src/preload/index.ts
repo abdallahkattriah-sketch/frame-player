@@ -3,6 +3,7 @@ import { IpcChannel } from '@shared/contracts/channels'
 import type { FrameApi } from '@shared/contracts/ipc'
 import type { PlayerState } from '@shared/contracts/player'
 import type { ScanProgress } from '@shared/contracts/library'
+import type { MetadataStatus } from '@shared/contracts/metadata'
 
 const api: FrameApi = {
   app: {
@@ -58,6 +59,19 @@ const api: FrameApi = {
   history: {
     setWatched: (item, watched) => ipcRenderer.invoke(IpcChannel.HistorySetWatched, item, watched),
     remove: (item) => ipcRenderer.invoke(IpcChannel.HistoryRemove, item),
+  },
+  metadata: {
+    status: () => ipcRenderer.invoke(IpcChannel.MetadataStatus),
+    testToken: () => ipcRenderer.invoke(IpcChannel.MetadataTestToken),
+    identifyNow: () => ipcRenderer.invoke(IpcChannel.MetadataIdentifyNow),
+    search: (search) => ipcRenderer.invoke(IpcChannel.MetadataSearch, search),
+    candidates: (target) => ipcRenderer.invoke(IpcChannel.MetadataCandidates, target),
+    apply: (target, tmdbId, mediaType) =>
+      ipcRenderer.invoke(IpcChannel.MetadataApply, target, tmdbId, mediaType),
+    reject: (target) => ipcRenderer.invoke(IpcChannel.MetadataReject, target),
+    reidentify: (target) => ipcRenderer.invoke(IpcChannel.MetadataReidentify, target),
+    item: (target) => ipcRenderer.invoke(IpcChannel.MetadataItem, target),
+    onStatus: (listener) => subscribe<MetadataStatus>(IpcChannel.MetadataStatusChanged, listener),
   },
 }
 
