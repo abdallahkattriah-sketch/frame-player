@@ -103,6 +103,27 @@ test('collections and playlists: create, add, reorder, rename, delete without to
 
     // Add two movies from the library.
     await page.getByRole('button', { name: 'Movies', exact: true }).click()
+
+    // Right-clicking a poster opens the full menu at the pointer, not clipped by the poster.
+    const card = page.getByRole('button', { name: 'Play Bravo' })
+    await expect(card).toBeVisible()
+    const box = await card.boundingBox()
+    if (!box) throw new Error('no card')
+    await page.mouse.click(box.x + box.width / 2, box.y + 40, { button: 'right' })
+    const items = page.getByRole('menu', { name: 'Actions for Bravo' }).getByRole('menuitem')
+    await expect(items.first()).toBeVisible()
+    const last = items.last()
+    const lastBox = await last.boundingBox()
+    if (!lastBox) throw new Error('no menu item')
+    expect(lastBox.y + lastBox.height).toBeGreaterThan(box.y + box.height * 0.6) // extends past the poster area
+    expect(
+      await last.evaluate((el) => {
+        const r = el.getBoundingClientRect()
+        return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2))
+      }),
+    ).toBe(true)
+    await page.keyboard.press('Escape')
+    await expect(items).toHaveCount(0)
     for (const title of ['Charlie', 'Alpha']) {
       await page.getByRole('button', { name: `More actions for ${title}` }).click()
       await page.getByRole('menuitem', { name: 'Add to collection…' }).click()

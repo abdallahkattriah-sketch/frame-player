@@ -18,13 +18,21 @@ export interface ItemProps {
 
 /** Opens the actions menu on right-click and Shift+F10 / the context-menu key. */
 function useItemMenu() {
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuOpen, setOpen] = useState(false)
+  // Where a right-click happened; null opens the menu at its "more" button.
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null)
+  const setMenuOpen = (open: boolean) => {
+    if (!open) setAnchor(null)
+    setOpen(open)
+  }
   return {
     menuOpen,
+    anchor,
     setMenuOpen,
     onContextMenu: (e: MouseEvent) => {
       e.preventDefault()
-      setMenuOpen(true)
+      setAnchor({ x: e.clientX, y: e.clientY })
+      setOpen(true)
     },
     onKeyDown: (e: KeyboardEvent, onPlay: () => void) => {
       if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) {
@@ -105,6 +113,7 @@ export function MediaCard({ item, onPlay }: ItemProps) {
         <ItemMenu
           item={item}
           open={menu.menuOpen}
+          anchor={menu.anchor}
           onOpenChange={menu.setMenuOpen}
           onPlay={onPlay}
           className={`absolute right-2 top-2 ${
@@ -159,6 +168,7 @@ export function MediaRow({ item, onPlay }: ItemProps) {
       <ItemMenu
         item={item}
         open={menu.menuOpen}
+        anchor={menu.anchor}
         onOpenChange={menu.setMenuOpen}
         onPlay={onPlay}
         className={
