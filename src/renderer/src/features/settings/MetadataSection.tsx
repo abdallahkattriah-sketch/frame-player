@@ -229,6 +229,15 @@ export function MetadataSection() {
           />
           Also show movies and shows from TMDB when searching
         </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={settings?.metadata.browseTmdb ?? true}
+            onChange={(e) => void update({ metadata: { browseTmdb: e.currentTarget.checked } })}
+            className="accent-[var(--frame-accent)]"
+          />
+          Show trending and top 10 lists from TMDB on Home, Movies, and TV Shows
+        </label>
         <button
           type="button"
           disabled={!configured || !enabled || status?.identifying}

@@ -335,6 +335,55 @@ describe('MetadataService identification', () => {
     ])
   })
 
+  it('browses trending lists: skips people and adult titles, caches, marks library titles', async () => {
+    const json = (body: unknown) => () =>
+      new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } })
+    const { service, calls } = setup({
+      overrides: {
+        '/3/trending/all/day': json({
+          page: 1,
+          total_results: 4,
+          results: [
+            {
+              id: 603,
+              media_type: 'movie',
+              title: 'The Matrix',
+              release_date: '1999-03-30',
+              backdrop_path: '/m.jpg',
+              vote_average: 8.2,
+              vote_count: 100,
+            },
+            { id: 1, media_type: 'person', name: 'Keanu Reeves' },
+            { id: 2, media_type: 'movie', title: 'Adult', adult: true },
+            { id: 1396, media_type: 'tv', name: 'Breaking Bad', first_air_date: '2008-01-20' },
+          ],
+        }),
+        '/3/tv/top_rated': json({
+          page: 1,
+          total_results: 1,
+          results: [{ id: 1396, name: 'Breaking Bad', vote_average: 8.9, vote_count: 0 }],
+        }),
+      },
+    })
+    await service.identifyPending()
+    const today = await service.browse('trending-today')
+    expect(today.map((r) => [r.mediaType, r.tmdbId, r.year, r.inLibrary])).toEqual([
+      ['movie', 603, 1999, true],
+      ['tv', 1396, 2008, true],
+    ])
+    expect(today[0]).toMatchObject({ backdropPath: '/m.jpg', voteAverage: 8.2 })
+    const before = calls.length
+    await service.browse('trending-today')
+    expect(calls.length).toBe(before)
+    // Lists of one kind carry no media_type; unrated titles have no rating.
+    expect(await service.browse('shows-top-rated')).toMatchObject([
+      { mediaType: 'tv', tmdbId: 1396, voteAverage: null },
+    ])
+    await expect(setup({ enabled: false }).service.browse('trending-today')).rejects.toThrow(
+      /turned off/,
+    )
+  })
+
   it('fetches details for any TMDB title once and then serves them from the cache', async () => {
     const { service, calls } = setup()
     const details = await service.details('movie', 603)

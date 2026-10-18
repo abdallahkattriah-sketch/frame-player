@@ -2,12 +2,42 @@ import { useState } from 'react'
 import type { LibraryView } from '@shared/contracts/library'
 import { segmentClass, segmentedClass } from '@renderer/components/ui/Dropdown'
 import { LibraryBrowser } from './LibraryBrowser'
+import {
+  DiscoverPage,
+  PageTabs,
+  usePageTab,
+  useBrowseState,
+} from '@renderer/features/discover/Discover'
 
 const libraryEmpty = 'No videos yet. Add library folders in Settings.'
 
 export function MoviesView({ search }: { search: string }) {
+  const browse = useBrowseState()
+  const [tab, setTab] = usePageTab('movies')
+  // Searching always shows the library's matches.
+  const tabs =
+    browse === 'ready' && !search ? (
+      <PageTabs value={tab} onChange={setTab} libraryLabel="Your movies" />
+    ) : null
+  if (tabs && tab === 'discover') {
+    return (
+      <DiscoverPage
+        title="Movies"
+        tabs={tabs}
+        hero="trending-movies"
+        rows={[
+          { list: 'trending-movies', title: 'Top 10 movies this week', topTen: true },
+          { list: 'movies-now-playing', title: 'In cinemas now' },
+          { list: 'movies-upcoming', title: 'Coming soon' },
+          { list: 'movies-popular', title: 'Popular' },
+          { list: 'movies-top-rated', title: 'Top rated of all time' },
+        ]}
+      />
+    )
+  }
   return (
     <LibraryBrowser
+      headerExtra={tabs}
       viewId="movies"
       title="Movies"
       query={{ view: 'movies', search }}

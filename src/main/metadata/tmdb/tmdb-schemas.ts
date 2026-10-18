@@ -44,6 +44,25 @@ export const tvResultSchema = z.object({
 const page = <T extends z.ZodType>(item: T) =>
   z.object({ page: z.number(), results: z.array(item), total_results: z.number() })
 
+/** Items of TMDB list and trending endpoints; trending "all" mixes movies, shows, and people. */
+export const listItemSchema = z.object({
+  id: z.number().int(),
+  media_type: str,
+  title: str,
+  name: str,
+  release_date: str,
+  first_air_date: str,
+  poster_path: str,
+  backdrop_path: str,
+  overview: str,
+  popularity: num,
+  vote_average: num,
+  vote_count: num,
+  adult: z.boolean().nullish(),
+})
+export const listSchema = page(listItemSchema)
+export type TmdbListItem = z.infer<typeof listItemSchema>
+
 export const movieSearchSchema = page(movieResultSchema)
 export const tvSearchSchema = page(tvResultSchema)
 export type TmdbMovieResult = z.infer<typeof movieResultSchema>

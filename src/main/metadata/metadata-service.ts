@@ -1,5 +1,6 @@
 import type {
   TmdbSearchResult,
+  TmdbListId,
   EpisodeMetadata,
   ItemMetadata,
   MatchCandidate,
@@ -17,7 +18,7 @@ import type {
 } from '../database/repositories/metadata-repository'
 import { HttpError } from '../network/http-client'
 import { rankCandidates, yearOf, type RawCandidate } from './matching'
-import { TmdbNotConfiguredError, type TmdbClient } from './tmdb/tmdb-client'
+import { TMDB_LISTS, TmdbNotConfiguredError, type TmdbClient } from './tmdb/tmdb-client'
 import type { TmdbMovieDetails, TmdbTvDetails } from './tmdb/tmdb-schemas'
 
 const DAY_MS = 86_400_000
@@ -26,6 +27,8 @@ export const MAX_CACHE_AGE_MS = 180 * DAY_MS
 /** Refresh well before the hard limit. */
 const REFRESH_AGE_MS = 30 * DAY_MS
 const SEARCH_CACHE_MS = 7 * DAY_MS
+/** Trending and top lists change daily; refresh them a few times a day. */
+const LIST_CACHE_MS = DAY_MS / 4
 const CONCURRENCY = 4
 
 export interface MetadataServiceOptions {
@@ -148,8 +151,45 @@ export class MetadataService {
         year: yearOf(r.date),
         overview: r.overview,
         posterPath: r.posterPath,
+        backdropPath: null,
+        voteAverage: null,
         inLibrary: inLibrary.has(`${r.mediaType}:${r.tmdbId}`),
       }))
+  }
+
+  /** A trending or top list from TMDB, marking titles already in the library. */
+  async browse(id: TmdbListId): Promise<TmdbSearchResult[]> {
+    this.assertOnline()
+    const key = `list:${id}:${this.options.getLanguage()}`
+    const notBefore = new Date(
+      (this.options.now?.() ?? new Date()).getTime() - LIST_CACHE_MS,
+    ).toISOString()
+    let items = this.options.repository.getCached(key, notBefore) as
+      Omit<TmdbSearchResult, 'inLibrary'>[] | undefined
+    if (!Array.isArray(items)) {
+      const fixed = TMDB_LISTS[id].mediaType
+      items = (await this.options.tmdb.list(id)).flatMap((r) => {
+        const mediaType = fixed ?? r.media_type
+        const title = r.title ?? r.name
+        // Trending "all" also lists people; adult titles are never shown.
+        if ((mediaType !== 'movie' && mediaType !== 'tv') || !title || r.adult) return []
+        return [
+          {
+            tmdbId: r.id,
+            mediaType,
+            title,
+            year: yearOf(r.release_date ?? r.first_air_date ?? null),
+            overview: r.overview || null,
+            posterPath: r.poster_path ?? null,
+            backdropPath: r.backdrop_path ?? null,
+            voteAverage: r.vote_count ? (r.vote_average ?? null) : null,
+          },
+        ]
+      })
+      this.options.repository.putCached(key, items, this.nowIso())
+    }
+    const inLibrary = this.options.repository.matchedTmdbKeys()
+    return items.map((r) => ({ ...r, inLibrary: inLibrary.has(`${r.mediaType}:${r.tmdbId}`) }))
   }
 
   /** Details of any TMDB movie or show, from the cache when recent enough. */

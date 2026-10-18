@@ -67,6 +67,8 @@ export const metadataSettingsSchema = z.object({
   autoIdentify: z.boolean(),
   /** Library searches also show matching movies and shows from TMDB. */
   searchTmdb: z.boolean(),
+  /** Home, Movies, and TV Shows show trending and top lists from TMDB. */
+  browseTmdb: z.boolean(),
 })
 
 const languageCode = z.string().regex(/^[a-z]{2}(?:-[A-Z]{2})?$/)
@@ -123,7 +125,7 @@ export const defaultSettings: AppSettings = {
   },
   audio: { preferredLanguages: [], normalizeLoudness: false },
   library: { videoExtensions: [...defaultVideoExtensions] },
-  metadata: { language: 'en-US', autoIdentify: true, searchTmdb: true },
+  metadata: { language: 'en-US', autoIdentify: true, searchTmdb: true, browseTmdb: true },
   subtitles: {
     preferredLanguages: ['en'],
     hearingImpaired: 'include',

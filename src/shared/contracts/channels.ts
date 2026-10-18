@@ -66,6 +66,7 @@ export const IpcChannel = {
   MetadataReidentify: 'metadata:reidentify',
   MetadataItem: 'metadata:item',
   MetadataDiscover: 'metadata:discover',
+  MetadataBrowse: 'metadata:browse',
   MetadataDetails: 'metadata:details',
   MetadataOpenTmdbPage: 'metadata:open-tmdb-page',
   SubtitleProviders: 'subtitles:providers',

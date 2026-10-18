@@ -1,18 +1,9 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import {
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  ExternalLink,
-  Film,
-  Plus,
-  Star,
-  Tv,
-  X,
-} from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Check, ExternalLink, Film, Plus, Star, Tv, X } from 'lucide-react'
 import { TMDB_IMAGE_PATH, type CollectionTitleInput } from '@shared/contracts/collections'
 import type { MediaMetadata, TmdbSearchResult } from '@shared/contracts/metadata'
 import { Artwork } from '@renderer/components/ui/Artwork'
+import { Carousel } from '@renderer/components/ui/Carousel'
 import { useSettings } from '@renderer/app/settings-context'
 import { TmdbLogo } from '@renderer/features/settings/TmdbLogo'
 import {
@@ -32,7 +23,7 @@ export function titleInput(r: TmdbSearchResult): CollectionTitleInput {
   }
 }
 
-const resultLabel = (r: TmdbSearchResult) => `${r.title}${r.year ? ` (${r.year})` : ''}`
+export const resultLabel = (r: TmdbSearchResult) => `${r.title}${r.year ? ` (${r.year})` : ''}`
 
 function errorText(e: unknown) {
   return e instanceof Error
@@ -45,77 +36,6 @@ function PosterFallback({ mediaType }: { mediaType: TmdbSearchResult['mediaType'
   return (
     <div className="flex h-full w-full items-center justify-center bg-elevated">
       <Icon size={22} className="text-subtle" aria-hidden />
-    </div>
-  )
-}
-
-/** A horizontal row without a scrollbar: arrows on hover page through it, edges fade. */
-function Carousel({ label, children }: { label: string; children: ReactNode }) {
-  const ref = useRef<HTMLUListElement>(null)
-  const [edges, setEdges] = useState({ start: false, end: false })
-
-  const update = useCallback(() => {
-    const el = ref.current
-    if (!el) return
-    const max = el.scrollWidth - el.clientWidth
-    setEdges({ start: el.scrollLeft > 1, end: el.scrollLeft < max - 1 })
-  }, [])
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    update()
-    const observer = new ResizeObserver(update)
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [update, children])
-
-  const page = (direction: 1 | -1) => {
-    const el = ref.current
-    if (!el) return
-    // One "page": the visible width, minus a little so the last poster stays in view.
-    el.scrollBy({ left: direction * Math.max(el.clientWidth - 140, 140), behavior: 'smooth' })
-  }
-
-  const fade = (side: 'left' | 'right') =>
-    `pointer-events-none absolute inset-y-0 w-16 from-bg to-transparent ${
-      side === 'left' ? 'left-0 bg-linear-to-r' : 'right-0 bg-linear-to-l'
-    }`
-  const arrow =
-    'absolute top-[calc(50%-1.75rem)] z-10 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-elevated/90 text-text opacity-0 shadow-lg transition-opacity hover:bg-raised focus-visible:opacity-100 group-hover/row:opacity-100'
-
-  return (
-    <div className="group/row relative">
-      <ul
-        ref={ref}
-        aria-label={label}
-        onScroll={update}
-        className="scrollbar-none -mx-1 flex gap-4 overflow-x-auto px-1"
-      >
-        {children}
-      </ul>
-      {edges.start && <div className={fade('left')} aria-hidden />}
-      {edges.end && <div className={fade('right')} aria-hidden />}
-      {edges.start && (
-        <button
-          type="button"
-          aria-label="Scroll left"
-          onClick={() => page(-1)}
-          className={`${arrow} left-1`}
-        >
-          <ChevronLeft size={18} />
-        </button>
-      )}
-      {edges.end && (
-        <button
-          type="button"
-          aria-label="Scroll right"
-          onClick={() => page(1)}
-          className={`${arrow} right-1`}
-        >
-          <ChevronRight size={18} />
-        </button>
-      )}
     </div>
   )
 }
@@ -255,6 +175,69 @@ export function TmdbDetailsDialog({
   )
 }
 
+/** A TMDB poster: opens details on click, adds to a collection from its hover button, drags. */
+export function TmdbCard({
+  result: r,
+  onOpen,
+  onAdd,
+  className = 'w-[120px]',
+}: {
+  result: TmdbSearchResult
+  onOpen: () => void
+  onAdd: () => void
+  className?: string
+}) {
+  return (
+    <li className={`group/card relative shrink-0 ${className}`}>
+      <button
+        type="button"
+        onClick={onOpen}
+        {...titleDragProps(titleInput(r))}
+        aria-label={`${r.title}${r.year ? ` (${r.year})` : ''}, ${
+          r.mediaType === 'tv' ? 'TV show' : 'movie'
+        } on TMDB`}
+        className="group flex w-full flex-col gap-1.5 text-left transition-transform group-hover/card:-translate-y-0.5"
+      >
+        <span className="relative block aspect-[2/3] w-full overflow-hidden rounded-md border border-border group-hover:border-subtle">
+          <Artwork
+            kind="poster"
+            path={r.posterPath}
+            alt=""
+            className="h-full w-full object-cover"
+            fallback={<PosterFallback mediaType={r.mediaType} />}
+          />
+          {r.inLibrary && (
+            <span className="absolute left-1.5 top-1.5 rounded bg-bg/85 px-1.5 py-0.5 text-[10px] text-accent">
+              In library
+            </span>
+          )}
+          {r.voteAverage ? (
+            <span className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 rounded bg-bg/85 px-1.5 py-0.5 text-[10px] font-medium text-text">
+              <Star size={10} className="fill-accent text-accent" aria-hidden />
+              {r.voteAverage.toFixed(1)}
+            </span>
+          ) : null}
+        </span>
+        <span className="truncate text-sm font-medium" dir="auto">
+          {r.title}
+        </span>
+        <span className="text-xs text-muted">
+          {[r.year, r.mediaType === 'tv' ? 'TV' : 'Movie'].filter(Boolean).join(' · ')}
+        </span>
+      </button>
+      <button
+        type="button"
+        aria-label={`Add ${resultLabel(r)} to a collection`}
+        title="Add to collection (or drag onto one in the sidebar)"
+        onClick={onAdd}
+        className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-bg/85 text-text opacity-0 shadow transition-opacity hover:bg-accent hover:text-bg focus-visible:opacity-100 group-hover/card:opacity-100"
+      >
+        <Plus size={15} />
+      </button>
+    </li>
+  )
+}
+
 /**
  * "On TMDB" results for a library search: titles beyond the user's own files. Shown only
  * when the option is on, online lookups are allowed, and a TMDB token is saved.
@@ -321,50 +304,12 @@ export function TmdbSearchResults({ query }: { query: string }) {
       {current && current.results.length > 0 && (
         <Carousel label="TMDB results">
           {current.results.map((r) => (
-            <li
+            <TmdbCard
               key={`${r.mediaType}-${r.tmdbId}`}
-              className="group/card relative w-[120px] shrink-0"
-            >
-              <button
-                type="button"
-                onClick={() => setOpen(r)}
-                {...titleDragProps(titleInput(r))}
-                aria-label={`${r.title}${r.year ? ` (${r.year})` : ''}, ${
-                  r.mediaType === 'tv' ? 'TV show' : 'movie'
-                } on TMDB`}
-                className="group flex w-full flex-col gap-1.5 text-left"
-              >
-                <span className="relative block aspect-[2/3] w-full overflow-hidden rounded-md border border-border group-hover:border-subtle">
-                  <Artwork
-                    kind="poster"
-                    path={r.posterPath}
-                    alt=""
-                    className="h-full w-full object-cover"
-                    fallback={<PosterFallback mediaType={r.mediaType} />}
-                  />
-                  {r.inLibrary && (
-                    <span className="absolute left-1.5 top-1.5 rounded bg-bg/85 px-1.5 py-0.5 text-[10px] text-accent">
-                      In library
-                    </span>
-                  )}
-                </span>
-                <span className="truncate text-sm font-medium" dir="auto">
-                  {r.title}
-                </span>
-                <span className="text-xs text-muted">
-                  {[r.year, r.mediaType === 'tv' ? 'TV' : 'Movie'].filter(Boolean).join(' · ')}
-                </span>
-              </button>
-              <button
-                type="button"
-                aria-label={`Add ${resultLabel(r)} to a collection`}
-                title="Add to collection (or drag onto one in the sidebar)"
-                onClick={() => setAdding(r)}
-                className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-bg/85 text-text opacity-0 shadow transition-opacity hover:bg-accent hover:text-bg focus-visible:opacity-100 group-hover/card:opacity-100"
-              >
-                <Plus size={15} />
-              </button>
-            </li>
+              result={r}
+              onOpen={() => setOpen(r)}
+              onAdd={() => setAdding(r)}
+            />
           ))}
         </Carousel>
       )}

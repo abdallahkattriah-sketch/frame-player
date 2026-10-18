@@ -27,6 +27,7 @@ import type {
   MatchCandidate,
   MatchTarget,
   MediaMetadata,
+  TmdbListId,
   TmdbSearchResult,
   MetadataMediaType,
   MetadataSearch,
@@ -185,6 +186,8 @@ export interface FrameApi {
      * online lookups are off or no token is saved.
      */
     discover: (query: string) => Promise<TmdbSearchResult[]>
+    /** A trending or top list; empty when browsing TMDB is off or not set up. */
+    browse: (list: TmdbListId) => Promise<TmdbSearchResult[]>
     details: (mediaType: MetadataMediaType, tmdbId: number) => Promise<MediaMetadata>
     /** Opens the title's page on themoviedb.org in the default browser. */
     openTmdbPage: (mediaType: MetadataMediaType, tmdbId: number) => Promise<void>

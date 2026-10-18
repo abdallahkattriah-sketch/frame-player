@@ -23,6 +23,7 @@ import {
   matchTargetSchema,
   metadataSearchSchema,
   tmdbRefSchema,
+  tmdbListIds,
   tmdbSearchQuerySchema,
 } from '@shared/contracts/metadata'
 import {
@@ -473,6 +474,16 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
     )
       return []
     return deps.metadata.discover(query)
+  })
+  handle(IpcChannel.MetadataBrowse, z.tuple([z.enum(tmdbListIds)]), async ([list]) => {
+    const { metadata, privacy } = deps.settings.get()
+    if (
+      !metadata.browseTmdb ||
+      !privacy.onlineMetadataEnabled ||
+      !deps.metadata.status().tokenConfigured
+    )
+      return []
+    return deps.metadata.browse(list)
   })
   handle(IpcChannel.MetadataDetails, tmdbRefSchema, ([mediaType, tmdbId]) =>
     deps.metadata.details(mediaType, tmdbId),

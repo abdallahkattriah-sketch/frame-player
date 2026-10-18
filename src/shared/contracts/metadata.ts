@@ -23,9 +23,30 @@ export interface TmdbSearchResult {
   year: number | null
   overview: string | null
   posterPath: string | null
+  /** Wide artwork, when TMDB lists provide it (search results do not). */
+  backdropPath: string | null
+  /** TMDB user rating out of 10; null when unrated. */
+  voteAverage: number | null
   /** A library file or show is matched to this entry. */
   inLibrary: boolean
 }
+
+/** TMDB lists shown on Home, Movies, and TV Shows (developer.themoviedb.org, verified 2026-10-18). */
+export const tmdbListIds = [
+  'trending-today',
+  'trending-week',
+  'trending-movies',
+  'trending-shows',
+  'movies-now-playing',
+  'movies-upcoming',
+  'movies-popular',
+  'movies-top-rated',
+  'shows-airing-today',
+  'shows-on-the-air',
+  'shows-popular',
+  'shows-top-rated',
+] as const
+export type TmdbListId = (typeof tmdbListIds)[number]
 
 export const tmdbSearchQuerySchema = z.string().trim().min(2).max(200)
 export const tmdbRefSchema = z.tuple([z.enum(['movie', 'tv']), z.number().int().positive()])

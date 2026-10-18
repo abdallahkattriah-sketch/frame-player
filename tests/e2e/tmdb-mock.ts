@@ -104,6 +104,54 @@ const routes: Record<string, unknown> = {
   },
 }
 
+/** Trending and top lists: a few titles each, with posters and backdrops. */
+const movie = (id: number, title: string, year: number) => ({
+  id,
+  title,
+  release_date: `${year}-05-01`,
+  poster_path: `/p${id}.png`,
+  backdrop_path: `/b${id}.png`,
+  overview: `${title} overview.`,
+  vote_average: 7.5,
+  vote_count: 1000,
+})
+const show = (id: number, name: string, year: number) => ({
+  id,
+  name,
+  first_air_date: `${year}-01-01`,
+  poster_path: `/p${id}.png`,
+  backdrop_path: `/b${id}.png`,
+  overview: `${name} overview.`,
+  vote_average: 8.1,
+  vote_count: 500,
+})
+const listPage = (results: unknown[]) => ({ page: 1, total_results: results.length, results })
+const movies = [
+  movie(603, 'The Matrix', 1999),
+  movie(7001, 'Arrival Day', 2026),
+  movie(7002, 'Quiet Harbor', 2026),
+]
+const shows = [show(1396, 'Breaking Bad', 2008), show(8001, 'Night Shift', 2026)]
+const tagged = [
+  ...movies.map((m) => ({ ...m, media_type: 'movie' })),
+  { id: 31, media_type: 'person', name: 'Somebody' },
+  ...shows.map((t) => ({ ...t, media_type: 'tv' })),
+]
+Object.assign(routes, {
+  '/3/trending/all/day': listPage(tagged),
+  '/3/trending/all/week': listPage(tagged),
+  '/3/trending/movie/week': listPage(movies),
+  '/3/trending/tv/week': listPage(shows),
+  '/3/movie/now_playing': listPage(movies.slice(1)),
+  '/3/movie/upcoming': listPage(movies.slice(1)),
+  '/3/movie/popular': listPage(movies),
+  '/3/movie/top_rated': listPage(movies),
+  '/3/tv/airing_today': listPage(shows),
+  '/3/tv/on_the_air': listPage(shows),
+  '/3/tv/popular': listPage(shows),
+  '/3/tv/top_rated': listPage(shows),
+})
+
 export interface TmdbMock {
   apiBase: string
   imageBase: string

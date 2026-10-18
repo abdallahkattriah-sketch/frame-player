@@ -1,5 +1,11 @@
 import { useState } from 'react'
 import { ArrowLeft, Play, Tv } from 'lucide-react'
+import {
+  DiscoverPage,
+  PageTabs,
+  usePageTab,
+  useBrowseState,
+} from '@renderer/features/discover/Discover'
 import type { LibraryShow } from '@shared/contracts/library'
 import { LibraryBrowser, playItems } from './LibraryBrowser'
 import { episodeCode } from './item-format'
@@ -124,8 +130,31 @@ export function ShowsView({ search }: { search: string }) {
   const { data: shows, error } = useShows(search)
   const [openKey, setOpenKey] = useState<string | null>(null)
   const open = shows?.find((s) => s.key === openKey)
+  const browse = useBrowseState()
+  const [tab, setTab] = usePageTab('shows')
+  // Searching always shows the library's matches.
+  const tabs =
+    browse === 'ready' && !search ? (
+      <PageTabs value={tab} onChange={setTab} libraryLabel="Your shows" />
+    ) : null
 
   if (open) return <ShowDetail show={open} onBack={() => setOpenKey(null)} />
+  if (tabs && tab === 'discover') {
+    return (
+      <DiscoverPage
+        title="TV shows"
+        tabs={tabs}
+        hero="trending-shows"
+        rows={[
+          { list: 'trending-shows', title: 'Top 10 shows this week', topTen: true },
+          { list: 'shows-airing-today', title: 'New episodes today' },
+          { list: 'shows-on-the-air', title: 'On the air this week' },
+          { list: 'shows-popular', title: 'Popular' },
+          { list: 'shows-top-rated', title: 'Top rated of all time' },
+        ]}
+      />
+    )
+  }
 
   return (
     <section className="flex h-full flex-col gap-4" aria-labelledby="shows-heading">
@@ -136,6 +165,7 @@ export function ShowsView({ search }: { search: string }) {
         {shows && (
           <span className="text-sm text-subtle">{shows.length.toLocaleString()} shows</span>
         )}
+        {tabs}
       </header>
       {error && (
         <p role="alert" className="text-sm text-danger">
@@ -143,7 +173,7 @@ export function ShowsView({ search }: { search: string }) {
         </p>
       )}
       {shows && shows.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-sm text-muted">
+        <div className="text-sm text-muted">
           {search ? 'No shows match your search.' : 'No TV episodes found in your library yet.'}
         </div>
       ) : (

@@ -51,6 +51,15 @@ html[data-surface='overlay'] body {
   scrollbar-color: color-mix(in srgb, var(--frame-text-subtle) 70%, transparent) transparent;
 }
 
+@keyframes frame-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Rows that scroll with their own buttons instead of a scrollbar. */
 .scrollbar-none {
   scrollbar-width: none;

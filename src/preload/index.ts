@@ -113,6 +113,7 @@ const api: FrameApi = {
     reidentify: (target) => ipcRenderer.invoke(IpcChannel.MetadataReidentify, target),
     item: (target) => ipcRenderer.invoke(IpcChannel.MetadataItem, target),
     discover: (query) => ipcRenderer.invoke(IpcChannel.MetadataDiscover, query),
+    browse: (list) => ipcRenderer.invoke(IpcChannel.MetadataBrowse, list),
     details: (mediaType, tmdbId) =>
       ipcRenderer.invoke(IpcChannel.MetadataDetails, mediaType, tmdbId),
     openTmdbPage: (mediaType, tmdbId) =>

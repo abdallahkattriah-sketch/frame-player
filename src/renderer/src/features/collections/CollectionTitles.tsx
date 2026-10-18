@@ -22,7 +22,7 @@ export function useCollectionTitles(collectionId: number): CollectionTitle[] | n
 }
 
 function asResult(t: CollectionTitle): TmdbSearchResult {
-  return { ...t, overview: null }
+  return { ...t, overview: null, backdropPath: null, voteAverage: null }
 }
 
 function TitleCard({
