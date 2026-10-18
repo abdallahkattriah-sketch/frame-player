@@ -48,6 +48,12 @@ export const tmdbListIds = [
 ] as const
 export type TmdbListId = (typeof tmdbListIds)[number]
 
+/** A YouTube trailer listed by TMDB for a title. */
+export interface Trailer {
+  youtubeKey: string
+  name: string | null
+}
+
 export const tmdbSearchQuerySchema = z.string().trim().min(2).max(200)
 export const tmdbRefSchema = z.tuple([z.enum(['movie', 'tv']), z.number().int().positive()])
 

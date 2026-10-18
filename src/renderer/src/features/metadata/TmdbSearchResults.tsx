@@ -1,29 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
-import { Check, ExternalLink, Film, Plus, Star, Tv, X } from 'lucide-react'
-import { TMDB_IMAGE_PATH, type CollectionTitleInput } from '@shared/contracts/collections'
-import type { MediaMetadata, TmdbSearchResult } from '@shared/contracts/metadata'
+import { useEffect, useState } from 'react'
+import { Film, Plus, Star, Tv } from 'lucide-react'
+import type { TmdbSearchResult } from '@shared/contracts/metadata'
 import { Artwork } from '@renderer/components/ui/Artwork'
 import { Carousel } from '@renderer/components/ui/Carousel'
 import { useSettings } from '@renderer/app/settings-context'
-import { TmdbLogo } from '@renderer/features/settings/TmdbLogo'
-import {
-  AddToCollectionDialog,
-  CollectionMembership,
-} from '@renderer/features/collections/AddToCollectionDialog'
+import { AddToCollectionDialog } from '@renderer/features/collections/AddToCollectionDialog'
+import { TmdbDetailsDialog } from './TmdbDetailsDialog'
+import { resultLabel, titleInput } from './tmdb-title'
+
+export { TmdbDetailsDialog, resultLabel, titleInput }
 import { titleDragProps } from '@renderer/features/collections/collection-drag'
-
-/** What a collection stores about a TMDB result (poster only in the shape the cache accepts). */
-export function titleInput(r: TmdbSearchResult): CollectionTitleInput {
-  return {
-    mediaType: r.mediaType,
-    tmdbId: r.tmdbId,
-    title: r.title,
-    year: r.year,
-    posterPath: r.posterPath && TMDB_IMAGE_PATH.test(r.posterPath) ? r.posterPath : null,
-  }
-}
-
-export const resultLabel = (r: TmdbSearchResult) => `${r.title}${r.year ? ` (${r.year})` : ''}`
 
 function errorText(e: unknown) {
   return e instanceof Error
@@ -40,141 +26,6 @@ function PosterFallback({ mediaType }: { mediaType: TmdbSearchResult['mediaType'
   )
 }
 
-/** Details of a TMDB title that may not be in the library. */
-export function TmdbDetailsDialog({
-  result,
-  onClose,
-}: {
-  result: TmdbSearchResult
-  onClose: () => void
-}) {
-  const ref = useRef<HTMLDialogElement>(null)
-  const [adding, setAdding] = useState(false)
-  const [details, setDetails] = useState<MediaMetadata | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const dialog = ref.current
-    if (dialog && !dialog.open) dialog.showModal()
-    window.frame.metadata
-      .details(result.mediaType, result.tmdbId)
-      .then(setDetails)
-      .catch((e: unknown) => setError(errorText(e)))
-  }, [result])
-
-  const m = details
-  const facts = [
-    m?.year ?? result.year,
-    result.mediaType === 'tv' ? 'TV show' : 'Movie',
-    m?.runtimeMinutes ? `${m.runtimeMinutes} min` : null,
-    m?.genres.slice(0, 3).join(', ') || null,
-  ].filter(Boolean)
-
-  return (
-    <dialog
-      ref={ref}
-      aria-label={result.title}
-      onCancel={(e) => {
-        e.preventDefault()
-        onClose()
-      }}
-      className="m-auto w-full max-w-2xl rounded-lg border border-border bg-surface p-0 text-sm text-text shadow-2xl backdrop:bg-black/60"
-      data-testid="tmdb-details"
-    >
-      <div className="flex gap-5 p-5">
-        <div className="aspect-[2/3] w-40 shrink-0 overflow-hidden rounded-md border border-border">
-          <Artwork
-            kind="poster"
-            path={m?.posterPath ?? result.posterPath}
-            alt=""
-            className="h-full w-full object-cover"
-            fallback={<PosterFallback mediaType={result.mediaType} />}
-          />
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <div className="flex items-start gap-2">
-            <h2 className="flex-1 text-xl font-semibold" dir="auto">
-              {m?.title ?? result.title}
-            </h2>
-            <button
-              type="button"
-              aria-label="Close"
-              onClick={onClose}
-              className="rounded-md p-1 text-muted hover:bg-elevated hover:text-text"
-            >
-              <X size={18} />
-            </button>
-          </div>
-          <p className="text-muted">{facts.join(' · ')}</p>
-          {m?.voteAverage ? (
-            <p className="flex items-center gap-1 text-muted">
-              <Star size={14} className="fill-accent text-accent" aria-hidden />
-              {m.voteAverage.toFixed(1)} / 10
-              {m.voteCount ? ` (${m.voteCount.toLocaleString()} votes)` : ''}
-            </p>
-          ) : null}
-          {result.inLibrary && (
-            <p className="flex items-center gap-1 text-accent">
-              <Check size={14} aria-hidden /> In your library
-            </p>
-          )}
-          <CollectionMembership target={{ mediaType: result.mediaType, tmdbId: result.tmdbId }} />
-          <p className="leading-relaxed" dir="auto">
-            {m?.overview ?? result.overview ?? (error ? '' : 'Loading…')}
-          </p>
-          {m && m.creators.length > 0 && (
-            <p className="text-muted">
-              {result.mediaType === 'tv' ? 'Created by ' : 'Directed by '}
-              {m.creators.join(', ')}
-            </p>
-          )}
-          {m && m.cast.length > 0 && (
-            <p className="text-muted">
-              With{' '}
-              {m.cast
-                .slice(0, 6)
-                .map((c) => c.name)
-                .join(', ')}
-            </p>
-          )}
-          {error && (
-            <p role="alert" className="text-danger">
-              {error}
-            </p>
-          )}
-          <div className="mt-auto flex items-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() =>
-                void window.frame.metadata
-                  .openTmdbPage(result.mediaType, result.tmdbId)
-                  .catch(() => undefined)
-              }
-              className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 hover:bg-elevated"
-            >
-              <ExternalLink size={14} aria-hidden /> View on TMDB
-            </button>
-            <button
-              type="button"
-              onClick={() => setAdding(true)}
-              className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 hover:bg-elevated"
-            >
-              <Plus size={14} aria-hidden /> Add to collection…
-            </button>
-            <TmdbLogo className="ml-auto h-3" />
-          </div>
-        </div>
-      </div>
-      {adding && (
-        <AddToCollectionDialog
-          target={{ label: resultLabel(result), title: titleInput(result) }}
-          onClose={() => setAdding(false)}
-        />
-      )}
-    </dialog>
-  )
-}
-
 /** A TMDB poster: opens details on click, adds to a collection from its hover button, drags. */
 export function TmdbCard({
   result: r,
@@ -183,7 +34,7 @@ export function TmdbCard({
   className = 'w-[120px]',
 }: {
   result: TmdbSearchResult
-  onOpen: () => void
+  onOpen: (origin: DOMRect) => void
   onAdd: () => void
   className?: string
 }) {
@@ -191,14 +42,23 @@ export function TmdbCard({
     <li className={`group/card relative shrink-0 ${className}`}>
       <button
         type="button"
-        onClick={onOpen}
+        onClick={(e) =>
+          onOpen(
+            (
+              e.currentTarget.querySelector('[data-poster]') ?? e.currentTarget
+            ).getBoundingClientRect(),
+          )
+        }
         {...titleDragProps(titleInput(r))}
         aria-label={`${r.title}${r.year ? ` (${r.year})` : ''}, ${
           r.mediaType === 'tv' ? 'TV show' : 'movie'
         } on TMDB`}
-        className="group flex w-full flex-col gap-1.5 text-left transition-transform group-hover/card:-translate-y-0.5"
+        className="group flex w-full flex-col gap-1.5 text-left"
       >
-        <span className="relative block aspect-[2/3] w-full overflow-hidden rounded-md border border-border group-hover:border-subtle">
+        <span
+          data-poster
+          className="frame-poster relative block aspect-[2/3] w-full overflow-hidden rounded-md border border-border"
+        >
           <Artwork
             kind="poster"
             path={r.posterPath}
@@ -261,7 +121,7 @@ export function TmdbSearchResults({ query }: { query: string }) {
     results: TmdbSearchResult[]
     error: string | null
   } | null>(null)
-  const [open, setOpen] = useState<TmdbSearchResult | null>(null)
+  const [open, setOpen] = useState<{ result: TmdbSearchResult; origin: DOMRect } | null>(null)
   const [adding, setAdding] = useState<TmdbSearchResult | null>(null)
   const trimmed = query.trim()
 
@@ -307,13 +167,19 @@ export function TmdbSearchResults({ query }: { query: string }) {
             <TmdbCard
               key={`${r.mediaType}-${r.tmdbId}`}
               result={r}
-              onOpen={() => setOpen(r)}
+              onOpen={(origin) => setOpen({ result: r, origin })}
               onAdd={() => setAdding(r)}
             />
           ))}
         </Carousel>
       )}
-      {open && <TmdbDetailsDialog result={open} onClose={() => setOpen(null)} />}
+      {open && (
+        <TmdbDetailsDialog
+          result={open.result}
+          origin={open.origin}
+          onClose={() => setOpen(null)}
+        />
+      )}
       {adding && (
         <AddToCollectionDialog
           target={{ label: resultLabel(adding), title: titleInput(adding) }}

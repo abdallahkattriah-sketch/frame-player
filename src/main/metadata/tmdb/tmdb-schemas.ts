@@ -134,3 +134,18 @@ export const seasonDetailsSchema = z.object({
   ),
 })
 export type TmdbSeasonDetails = z.infer<typeof seasonDetailsSchema>
+
+/** /movie/{id}/videos and /tv/{id}/videos. */
+export const videosSchema = z.object({
+  results: z.array(
+    z.object({
+      key: z.string(),
+      site: str,
+      type: str,
+      official: z.boolean().nullish(),
+      name: str,
+      published_at: str,
+    }),
+  ),
+})
+export type TmdbVideo = z.infer<typeof videosSchema>['results'][number]

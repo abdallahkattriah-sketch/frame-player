@@ -69,6 +69,8 @@ export const metadataSettingsSchema = z.object({
   searchTmdb: z.boolean(),
   /** Home, Movies, and TV Shows show trending and top lists from TMDB. */
   browseTmdb: z.boolean(),
+  /** Details windows start the trailer (muted) by themselves. */
+  autoplayTrailers: z.boolean(),
 })
 
 const languageCode = z.string().regex(/^[a-z]{2}(?:-[A-Z]{2})?$/)
@@ -125,7 +127,13 @@ export const defaultSettings: AppSettings = {
   },
   audio: { preferredLanguages: [], normalizeLoudness: false },
   library: { videoExtensions: [...defaultVideoExtensions] },
-  metadata: { language: 'en-US', autoIdentify: true, searchTmdb: true, browseTmdb: true },
+  metadata: {
+    language: 'en-US',
+    autoIdentify: true,
+    searchTmdb: true,
+    browseTmdb: true,
+    autoplayTrailers: true,
+  },
   subtitles: {
     preferredLanguages: ['en'],
     hearingImpaired: 'include',

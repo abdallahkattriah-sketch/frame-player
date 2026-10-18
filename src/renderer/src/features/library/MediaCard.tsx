@@ -93,7 +93,7 @@ export function MediaCard({ item, onPlay }: ItemProps) {
         item.missing ? 'opacity-50' : ''
       }`}
     >
-      <div className="relative aspect-[2/3] overflow-hidden rounded-md border border-border shadow-sm transition-transform group-hover:-translate-y-0.5 group-hover:border-subtle">
+      <div className="frame-poster relative aspect-[2/3] overflow-hidden rounded-md border border-border shadow-sm">
         <Artwork
           kind="poster"
           path={item.posterPath}

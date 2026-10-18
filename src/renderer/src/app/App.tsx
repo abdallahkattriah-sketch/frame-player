@@ -131,7 +131,10 @@ export function App() {
             <div>{content}</div>
           </div>
         ) : (
-          content
+          // Each page fades up into place instead of appearing at once.
+          <div key={activeView} className="frame-enter h-full">
+            {content}
+          </div>
         )}
       </AppShell>
       {subtitleItem?.fileId != null && (

@@ -9,6 +9,7 @@ import {
   seasonDetailsSchema,
   tvDetailsSchema,
   tvSearchSchema,
+  videosSchema,
   type TmdbConfiguration,
   type TmdbListItem,
   type TmdbMovieDetails,
@@ -16,6 +17,7 @@ import {
   type TmdbSeasonDetails,
   type TmdbTvDetails,
   type TmdbTvResult,
+  type TmdbVideo,
 } from './tmdb-schemas'
 
 export const TMDB_API_BASE = 'https://api.themoviedb.org/3'
@@ -115,6 +117,17 @@ export class TmdbClient {
       tvDetailsSchema,
       signal,
     )
+  }
+
+  /** Trailers, teasers, and clips; `localized: false` asks for videos in any language. */
+  async videos(
+    mediaType: MetadataMediaType,
+    id: number,
+    localized: boolean,
+    signal?: AbortSignal,
+  ): Promise<TmdbVideo[]> {
+    return (await this.get(`/${mediaType}/${id}/videos`, {}, videosSchema, signal, localized))
+      .results
   }
 
   seasonDetails(id: number, season: number, signal?: AbortSignal): Promise<TmdbSeasonDetails> {

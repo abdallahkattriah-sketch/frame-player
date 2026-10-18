@@ -32,7 +32,7 @@ function TitleCard({
 }: {
   title: CollectionTitle
   collection: Collection
-  onOpen: () => void
+  onOpen: (origin: DOMRect) => void
 }) {
   const Icon = title.mediaType === 'tv' ? Tv : Film
   const label = `${title.title}${title.year ? ` (${title.year})` : ''}`
@@ -40,11 +40,20 @@ function TitleCard({
     <li className="group relative flex flex-col gap-2" data-testid="collection-title">
       <button
         type="button"
-        onClick={onOpen}
+        onClick={(e) =>
+          onOpen(
+            (
+              e.currentTarget.querySelector('[data-poster]') ?? e.currentTarget
+            ).getBoundingClientRect(),
+          )
+        }
         aria-label={`${label}, ${title.inLibrary ? 'in your library' : 'not in your library'}`}
         className="flex flex-col gap-2 rounded-lg text-left outline-offset-4"
       >
-        <span className="relative block aspect-[2/3] w-full overflow-hidden rounded-md border border-border shadow-sm transition-transform group-hover:-translate-y-0.5 group-hover:border-subtle">
+        <span
+          data-poster
+          className="frame-poster relative block aspect-[2/3] w-full overflow-hidden rounded-md border border-border shadow-sm"
+        >
           <Artwork
             kind="poster"
             path={title.posterPath}
@@ -113,7 +122,7 @@ export function CollectionTitles({
   collection: Collection
   titles: CollectionTitle[]
 }) {
-  const [open, setOpen] = useState<CollectionTitle | null>(null)
+  const [open, setOpen] = useState<{ title: CollectionTitle; origin: DOMRect } | null>(null)
   if (titles.length === 0) return null
   return (
     <>
@@ -126,11 +135,17 @@ export function CollectionTitles({
             key={`${t.mediaType}-${t.tmdbId}`}
             title={t}
             collection={collection}
-            onOpen={() => setOpen(t)}
+            onOpen={(origin) => setOpen({ title: t, origin })}
           />
         ))}
       </ul>
-      {open && <TmdbDetailsDialog result={asResult(open)} onClose={() => setOpen(null)} />}
+      {open && (
+        <TmdbDetailsDialog
+          result={asResult(open.title)}
+          origin={open.origin}
+          onClose={() => setOpen(null)}
+        />
+      )}
     </>
   )
 }

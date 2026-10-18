@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, session, shell } from 'electron'
 import { join } from 'node:path'
 import {
   hardenSession,
+  identifyToYouTube,
   hardenWebContents,
   isAllowedAppUrl,
   secureWebPreferences,
@@ -103,6 +104,8 @@ if (!app.requestSingleInstanceLock()) {
 
   void app.whenReady().then(() => {
     hardenSession(session.defaultSession)
+    // Same ID as appId in electron-builder.yml.
+    identifyToYouTube(session.defaultSession, 'local.frame.player')
 
     const paths = resolveAppPaths()
     try {

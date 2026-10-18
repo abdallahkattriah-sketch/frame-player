@@ -1,6 +1,7 @@
 import type {
   TmdbSearchResult,
   TmdbListId,
+  Trailer,
   EpisodeMetadata,
   ItemMetadata,
   MatchCandidate,
@@ -19,7 +20,10 @@ import type {
 import { HttpError } from '../network/http-client'
 import { rankCandidates, yearOf, type RawCandidate } from './matching'
 import { TMDB_LISTS, TmdbNotConfiguredError, type TmdbClient } from './tmdb/tmdb-client'
-import type { TmdbMovieDetails, TmdbTvDetails } from './tmdb/tmdb-schemas'
+import type { TmdbMovieDetails, TmdbTvDetails, TmdbVideo } from './tmdb/tmdb-schemas'
+
+/** YouTube video ids are 11 characters; anything else is not embedded. */
+const YOUTUBE_KEY = /^[A-Za-z0-9_-]{11}$/
 
 const DAY_MS = 86_400_000
 /** TMDB terms: do not cache TMDB content for longer than 6 months. */
@@ -190,6 +194,37 @@ export class MetadataService {
     }
     const inLibrary = this.options.repository.matchedTmdbKeys()
     return items.map((r) => ({ ...r, inLibrary: inLibrary.has(`${r.mediaType}:${r.tmdbId}`) }))
+  }
+
+  /**
+   * The best YouTube trailer TMDB lists for a title: official trailers first, then teasers,
+   * in the TMDB language when there is one, otherwise in any language.
+   */
+  async trailer(mediaType: MetadataMediaType, tmdbId: number): Promise<Trailer | null> {
+    this.assertOnline()
+    const key = `trailer:${mediaType}:${tmdbId}:${this.options.getLanguage()}`
+    const notBefore = new Date(
+      (this.options.now?.() ?? new Date()).getTime() - SEARCH_CACHE_MS,
+    ).toISOString()
+    const cached = this.options.repository.getCached(key, notBefore) as
+      { trailer: Trailer | null } | undefined
+    if (cached && typeof cached === 'object' && 'trailer' in cached) return cached.trailer
+    const pick = (videos: TmdbVideo[]): Trailer | null => {
+      const usable = videos.filter(
+        (v) =>
+          v.site === 'YouTube' &&
+          YOUTUBE_KEY.test(v.key) &&
+          (v.type === 'Trailer' || v.type === 'Teaser'),
+      )
+      const score = (v: TmdbVideo) => (v.type === 'Trailer' ? 2 : 0) + (v.official ? 1 : 0)
+      const best = usable.sort((a, b) => score(b) - score(a))[0]
+      return best ? { youtubeKey: best.key, name: best.name ?? null } : null
+    }
+    const trailer =
+      pick(await this.options.tmdb.videos(mediaType, tmdbId, true)) ??
+      pick(await this.options.tmdb.videos(mediaType, tmdbId, false))
+    this.options.repository.putCached(key, { trailer }, this.nowIso())
+    return trailer
   }
 
   /** Details of any TMDB movie or show, from the cache when recent enough. */

@@ -68,7 +68,7 @@ export function DetailsPanel({ item, onClose }: { item: LibraryItem; onClose: ()
     <aside
       aria-label="Details"
       data-testid="details-panel"
-      className="flex w-96 shrink-0 flex-col overflow-y-auto border-l border-border bg-surface"
+      className="frame-panel flex w-96 shrink-0 flex-col overflow-y-auto border-l border-border bg-surface"
     >
       <div className="relative aspect-video w-full shrink-0 bg-elevated">
         <Artwork

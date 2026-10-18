@@ -28,6 +28,7 @@ import type {
   MatchTarget,
   MediaMetadata,
   TmdbListId,
+  Trailer,
   TmdbSearchResult,
   MetadataMediaType,
   MetadataSearch,
@@ -188,6 +189,8 @@ export interface FrameApi {
     discover: (query: string) => Promise<TmdbSearchResult[]>
     /** A trending or top list; empty when browsing TMDB is off or not set up. */
     browse: (list: TmdbListId) => Promise<TmdbSearchResult[]>
+    /** A YouTube trailer for a title, or null when TMDB lists none or lookups are off. */
+    trailer: (mediaType: 'movie' | 'tv', tmdbId: number) => Promise<Trailer | null>
     details: (mediaType: MetadataMediaType, tmdbId: number) => Promise<MediaMetadata>
     /** Opens the title's page on themoviedb.org in the default browser. */
     openTmdbPage: (mediaType: MetadataMediaType, tmdbId: number) => Promise<void>

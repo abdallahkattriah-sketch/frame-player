@@ -60,6 +60,125 @@ html[data-surface='overlay'] body {
   }
 }
 
+@keyframes frame-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@keyframes frame-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+}
+@keyframes frame-menu {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+}
+@keyframes frame-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+@keyframes frame-progress {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+@keyframes frame-zoom-out {
+  from {
+    transform: scale(1.14);
+  }
+  to {
+    transform: scale(1.05);
+  }
+}
+
+/* Children rise into place one after another. */
+.frame-stagger > * {
+  animation: frame-rise 650ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+.frame-stagger > :nth-child(2) {
+  animation-delay: 70ms;
+}
+.frame-stagger > :nth-child(3) {
+  animation-delay: 140ms;
+}
+.frame-stagger > :nth-child(4) {
+  animation-delay: 210ms;
+}
+.frame-stagger > :nth-child(n + 5) {
+  animation-delay: 280ms;
+}
+
+/* Dialogs, menus, and panels ease in instead of appearing at once. */
+dialog[open]:not([data-anim='custom']) {
+  animation: frame-pop 260ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+dialog[open]::backdrop {
+  animation: frame-fade 260ms ease-out;
+}
+[role='menu'],
+[role='listbox'][id] {
+  animation: frame-menu 160ms ease-out;
+  transform-origin: top;
+}
+.frame-enter {
+  animation: frame-rise 380ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.frame-panel {
+  animation: frame-slide-in 380ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+
+/* Posters lift, glow, and catch a sweep of light on hover. */
+.frame-poster {
+  transition:
+    transform 380ms cubic-bezier(0.2, 0.9, 0.25, 1),
+    box-shadow 380ms ease,
+    border-color 380ms ease;
+}
+.frame-poster img {
+  transition:
+    transform 700ms cubic-bezier(0.2, 0.9, 0.25, 1),
+    filter 380ms ease;
+}
+.frame-poster::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    rgb(255 255 255 / 0.16) 50%,
+    transparent 65%
+  );
+  transform: translateX(-130%);
+}
+:is(:hover, :focus-visible) > .frame-poster {
+  transform: translateY(-6px);
+  border-color: color-mix(in srgb, var(--frame-accent) 55%, transparent);
+  box-shadow:
+    0 18px 36px -14px rgb(0 0 0 / 0.75),
+    0 0 0 1px color-mix(in srgb, var(--frame-accent) 35%, transparent),
+    0 8px 28px -12px color-mix(in srgb, var(--frame-accent) 45%, transparent);
+}
+:is(:hover, :focus-visible) > .frame-poster img {
+  transform: scale(1.07);
+  filter: brightness(1.08);
+}
+:hover > .frame-poster::after {
+  transform: translateX(130%);
+  transition: transform 900ms ease;
+}
+
 /* Rows that scroll with their own buttons instead of a scrollbar. */
 .scrollbar-none {
   scrollbar-width: none;
@@ -89,6 +208,7 @@ html[data-motion='reduced'] *,
 html[data-motion='reduced'] *::before,
 html[data-motion='reduced'] *::after {
   transition-duration: 60ms !important;
+  animation-duration: 120ms !important;
 }
 html[data-motion='off'] *,
 html[data-motion='off'] *::before,

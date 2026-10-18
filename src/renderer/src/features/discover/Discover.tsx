@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Check, Info, Plus, Sparkles, Star } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Info, Plus, Sparkles, Star } from 'lucide-react'
 import type { TmdbListId, TmdbSearchResult } from '@shared/contracts/metadata'
 import { Artwork } from '@renderer/components/ui/Artwork'
 import { Carousel } from '@renderer/components/ui/Carousel'
@@ -58,31 +58,40 @@ function useTmdbList(id: TmdbListId): TmdbSearchResult[] | null | 'failed' {
 }
 
 interface Actions {
-  open: (r: TmdbSearchResult) => void
+  /** `origin`: the poster or banner the details should grow out of. */
+  open: (r: TmdbSearchResult, origin?: DOMRect) => void
   add: (r: TmdbSearchResult) => void
 }
 
 const typeLabel = (r: TmdbSearchResult) => (r.mediaType === 'tv' ? 'TV show' : 'Movie')
+const SLIDE_MS = 8000
 
-/** A wide, rotating banner of the first titles of a list. */
+/** A wide banner of the first titles of a list: slides crossfade, with arrows and dots. */
 function Hero({ list, actions }: { list: TmdbListId; actions: Actions }) {
   const items = useTmdbList(list)
   const { settings } = useSettings()
   const featured = Array.isArray(items) ? items.filter((r) => r.backdropPath).slice(0, 6) : []
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
-  const rotate = settings?.appearance.animations !== 'off' && !paused && featured.length > 1
+  const motion = settings?.appearance.animations ?? 'full'
+  const rotate = motion !== 'off' && !paused && featured.length > 1
+  const count = featured.length
+  const current = count > 0 ? ((index % count) + count) % count : 0
 
+  // Restarts after every change, so a click on an arrow gets a full slide before moving on.
   useEffect(() => {
     if (!rotate) return
-    const timer = window.setInterval(() => setIndex((i) => i + 1), 8000)
-    return () => window.clearInterval(timer)
-  }, [rotate])
+    const timer = window.setTimeout(() => setIndex((i) => i + 1), SLIDE_MS)
+    return () => window.clearTimeout(timer)
+  }, [rotate, index])
 
   if (items === null)
     return <div className="aspect-[21/8] w-full animate-pulse rounded-xl bg-surface" />
-  const r = featured.length > 0 ? featured[index % featured.length] : undefined
+  const r = featured[current]
   if (!r) return null
+
+  const arrow =
+    'absolute top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white opacity-0 backdrop-blur transition duration-300 hover:scale-110 hover:bg-black/70 focus-visible:opacity-100 group-hover/hero:opacity-100'
 
   return (
     <section
@@ -93,20 +102,37 @@ function Hero({ list, actions }: { list: TmdbListId; actions: Actions }) {
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
-      className="relative aspect-[21/8] max-h-[440px] min-h-[260px] w-full overflow-hidden rounded-xl border border-border bg-surface"
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowRight') setIndex(current + 1)
+        else if (e.key === 'ArrowLeft') setIndex(current - 1)
+      }}
+      className="group/hero relative aspect-[21/8] max-h-[440px] min-h-[260px] w-full overflow-hidden rounded-xl border border-border bg-surface"
     >
-      <Artwork
-        key={`${r.mediaType}-${r.tmdbId}`}
-        kind="backdrop"
-        path={r.backdropPath}
-        alt=""
-        className="absolute inset-0 h-full w-full animate-[frame-fade_600ms_ease-out] object-cover"
-        fallback={null}
-      />
+      {/* Every slide stays mounted; the current one fades in and slowly zooms. */}
+      {featured.map((f, i) => (
+        <div
+          key={`${f.mediaType}-${f.tmdbId}`}
+          aria-hidden
+          className={`absolute inset-0 transition-[opacity,transform] ease-out ${
+            i === current
+              ? 'scale-[1.06] opacity-100 duration-[900ms,9000ms]'
+              : 'scale-100 opacity-0 duration-[900ms,900ms]'
+          }`}
+        >
+          <Artwork
+            kind="backdrop"
+            path={f.backdropPath}
+            alt=""
+            className="h-full w-full object-cover"
+            fallback={null}
+          />
+        </div>
+      ))}
       <div className="absolute inset-0 bg-linear-to-r from-black/90 via-black/55 to-transparent" />
       <div className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent" />
       <div
-        className="absolute bottom-0 left-0 flex max-w-xl flex-col gap-3 p-8 text-white"
+        key={`${r.mediaType}-${r.tmdbId}`}
+        className="frame-stagger absolute bottom-0 left-0 z-10 flex max-w-xl flex-col gap-3 p-8 pl-16 text-white"
         aria-live="polite"
       >
         <span className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-accent">
@@ -137,8 +163,10 @@ function Hero({ list, actions }: { list: TmdbListId; actions: Actions }) {
         <div className="mt-1 flex gap-2">
           <button
             type="button"
-            onClick={() => actions.open(r)}
-            className="flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-bg hover:brightness-110"
+            onClick={(e) =>
+              actions.open(r, e.currentTarget.closest('section')?.getBoundingClientRect())
+            }
+            className="flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:scale-[1.03] hover:brightness-110"
           >
             <Info size={15} aria-hidden /> More info
           </button>
@@ -146,33 +174,59 @@ function Hero({ list, actions }: { list: TmdbListId; actions: Actions }) {
             type="button"
             onClick={() => actions.add(r)}
             {...titleDragProps(titleInput(r))}
-            className="flex items-center gap-1.5 rounded-md bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur hover:bg-white/25"
+            className="flex items-center gap-1.5 rounded-md bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition hover:scale-[1.03] hover:bg-white/25"
           >
             <Plus size={15} aria-hidden /> Add to collection
           </button>
         </div>
       </div>
-      {featured.length > 1 && (
-        <div
-          className="absolute bottom-4 right-5 flex gap-1.5"
-          role="group"
-          aria-label="Featured titles"
-        >
-          {featured.map((f, i) => (
-            <button
-              key={`${f.mediaType}-${f.tmdbId}`}
-              type="button"
-              aria-label={`Show ${resultLabel(f)}`}
-              aria-pressed={i === index % featured.length}
-              onClick={() => setIndex(i)}
-              className={`h-1.5 rounded-full transition-all ${
-                i === index % featured.length
-                  ? 'w-6 bg-accent'
-                  : 'w-1.5 bg-white/45 hover:bg-white/70'
-              }`}
-            />
-          ))}
-        </div>
+      {count > 1 && (
+        <>
+          <button
+            type="button"
+            aria-label="Previous title"
+            onClick={() => setIndex(current - 1)}
+            className={`${arrow} left-3`}
+          >
+            <ChevronLeft size={22} />
+          </button>
+          <button
+            type="button"
+            aria-label="Next title"
+            onClick={() => setIndex(current + 1)}
+            className={`${arrow} right-3`}
+          >
+            <ChevronRight size={22} />
+          </button>
+          <div
+            className="absolute bottom-4 right-5 z-20 flex gap-1.5"
+            role="group"
+            aria-label="Featured titles"
+          >
+            {featured.map((f, i) => (
+              <button
+                key={`${f.mediaType}-${f.tmdbId}`}
+                type="button"
+                aria-label={`Show ${resultLabel(f)}`}
+                aria-pressed={i === current}
+                onClick={() => setIndex(i)}
+                className={`relative h-1.5 overflow-hidden rounded-full transition-all duration-500 ${
+                  i === current ? 'w-8 bg-white/30' : 'w-1.5 bg-white/45 hover:bg-white/70'
+                }`}
+              >
+                {/* The current dot fills up until the next slide. */}
+                {i === current && (
+                  <span
+                    key={index}
+                    className={`absolute inset-y-0 left-0 bg-accent ${
+                      rotate ? 'animate-[frame-progress_8s_linear_forwards]' : 'w-full'
+                    }`}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </section>
   )
@@ -233,7 +287,7 @@ function TopTenRow({
               <ol className="contents">
                 <TmdbCard
                   result={r}
-                  onOpen={() => actions.open(r)}
+                  onOpen={(origin) => actions.open(r, origin)}
                   onAdd={() => actions.add(r)}
                   className="z-10 w-[120px]"
                 />
@@ -270,7 +324,7 @@ function ListRow({
             <TmdbCard
               key={`${r.mediaType}-${r.tmdbId}`}
               result={r}
-              onOpen={() => actions.open(r)}
+              onOpen={(origin) => actions.open(r, origin)}
               onAdd={() => actions.add(r)}
               className="w-[140px]"
             />
@@ -291,9 +345,9 @@ export interface DiscoverRow {
 
 /** A featured banner and rows of TMDB lists, with details and add-to-collection dialogs. */
 export function DiscoverRows({ hero, rows }: { hero?: TmdbListId; rows: DiscoverRow[] }) {
-  const [open, setOpen] = useState<TmdbSearchResult | null>(null)
+  const [open, setOpen] = useState<{ result: TmdbSearchResult; origin?: DOMRect } | null>(null)
   const [adding, setAdding] = useState<TmdbSearchResult | null>(null)
-  const actions: Actions = { open: setOpen, add: setAdding }
+  const actions: Actions = { open: (result, origin) => setOpen({ result, origin }), add: setAdding }
   return (
     <>
       {hero && <Hero list={hero} actions={actions} />}
@@ -304,7 +358,13 @@ export function DiscoverRows({ hero, rows }: { hero?: TmdbListId; rows: Discover
           <ListRow key={row.list} {...row} actions={actions} />
         ),
       )}
-      {open && <TmdbDetailsDialog result={open} onClose={() => setOpen(null)} />}
+      {open && (
+        <TmdbDetailsDialog
+          result={open.result}
+          origin={open.origin ?? null}
+          onClose={() => setOpen(null)}
+        />
+      )}
       {adding && (
         <AddToCollectionDialog
           target={{ label: resultLabel(adding), title: titleInput(adding) }}

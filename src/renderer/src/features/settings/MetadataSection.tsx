@@ -238,6 +238,17 @@ export function MetadataSection() {
           />
           Show trending and top 10 lists from TMDB on Home, Movies, and TV Shows
         </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={settings?.metadata.autoplayTrailers ?? true}
+            onChange={(e) =>
+              void update({ metadata: { autoplayTrailers: e.currentTarget.checked } })
+            }
+            className="accent-[var(--frame-accent)]"
+          />
+          Play trailers (muted) when opening details (trailers stream from YouTube)
+        </label>
         <button
           type="button"
           disabled={!configured || !enabled || status?.identifying}

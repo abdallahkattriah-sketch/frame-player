@@ -29,7 +29,7 @@ function ShowCard({ show, onOpen }: { show: LibraryShow; onOpen: () => void }) {
       data-testid="show-card"
       className="group flex flex-col gap-2 text-left"
     >
-      <div className="aspect-[2/3] w-full overflow-hidden rounded-md border border-border bg-elevated transition-transform group-hover:-translate-y-0.5 group-hover:border-subtle">
+      <div className="frame-poster relative aspect-[2/3] w-full overflow-hidden rounded-md border border-border bg-elevated">
         <Artwork
           kind="poster"
           path={show.posterPath}
@@ -138,7 +138,12 @@ export function ShowsView({ search }: { search: string }) {
       <PageTabs value={tab} onChange={setTab} libraryLabel="Your shows" />
     ) : null
 
-  if (open) return <ShowDetail show={open} onBack={() => setOpenKey(null)} />
+  if (open)
+    return (
+      <div className="frame-enter h-full">
+        <ShowDetail show={open} onBack={() => setOpenKey(null)} />
+      </div>
+    )
   if (tabs && tab === 'discover') {
     return (
       <DiscoverPage
@@ -157,7 +162,7 @@ export function ShowsView({ search }: { search: string }) {
   }
 
   return (
-    <section className="flex h-full flex-col gap-4" aria-labelledby="shows-heading">
+    <section className="frame-enter flex h-full flex-col gap-4" aria-labelledby="shows-heading">
       <header className="flex items-center gap-3">
         <h1 id="shows-heading" className="text-2xl font-semibold tracking-tight">
           TV shows

@@ -33,6 +33,23 @@ export function hardenSession(session: Session): void {
   session.setPermissionCheckHandler(() => false)
 }
 
+/** Origin of embedded trailers; the only third-party content Frame shows. */
+export const YOUTUBE_EMBED_ORIGIN = 'https://www.youtube-nocookie.com'
+
+/**
+ * YouTube's embedded player requires API clients to identify themselves with an HTTPS
+ * Referer naming the app ID; Electron sends none from file:// pages
+ * (developers.google.com/youtube/terms/required-minimum-functionality).
+ */
+export function identifyToYouTube(session: Session, appId: string): void {
+  session.webRequest.onBeforeSendHeaders(
+    { urls: [`${YOUTUBE_EMBED_ORIGIN}/embed/*`] },
+    (details, callback) => {
+      callback({ requestHeaders: { ...details.requestHeaders, Referer: `https://${appId}/` } })
+    },
+  )
+}
+
 export function hardenWebContents(contents: WebContents, devServerUrl: string | undefined): void {
   contents.setWindowOpenHandler(() => ({ action: 'deny' }))
   contents.on('will-navigate', (event, url) => {

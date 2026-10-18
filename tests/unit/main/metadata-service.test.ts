@@ -384,6 +384,47 @@ describe('MetadataService identification', () => {
     )
   })
 
+  it('picks the official YouTube trailer, falls back to any language, and caches', async () => {
+    let tvVideoCalls = 0
+    const json = (body: unknown) => () =>
+      new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } })
+    const { service, calls } = setup({
+      overrides: {
+        '/3/movie/603/videos': json({
+          results: [
+            { key: 'notYouTube1', site: 'Vimeo', type: 'Trailer', official: true },
+            { key: 'teaserKey01', site: 'YouTube', type: 'Teaser', official: true },
+            { key: 'fanTrailer1', site: 'YouTube', type: 'Trailer', official: false },
+            {
+              key: 'officialTr1',
+              site: 'YouTube',
+              type: 'Trailer',
+              official: true,
+              name: 'Trailer',
+            },
+            { key: 'bad key with spaces', site: 'YouTube', type: 'Trailer', official: true },
+          ],
+        }),
+        // In the TMDB language there is none; in any language there is one.
+        '/3/tv/1396/videos': () =>
+          json({
+            results:
+              tvVideoCalls++ === 0
+                ? []
+                : [{ key: 'anyLanguage', site: 'YouTube', type: 'Trailer' }],
+          })(),
+      },
+    })
+    expect(await service.trailer('movie', 603)).toEqual({
+      youtubeKey: 'officialTr1',
+      name: 'Trailer',
+    })
+    const before = calls.length
+    await service.trailer('movie', 603)
+    expect(calls.length).toBe(before)
+    expect(await service.trailer('tv', 1396)).toEqual({ youtubeKey: 'anyLanguage', name: null })
+  })
+
   it('fetches details for any TMDB title once and then serves them from the cache', async () => {
     const { service, calls } = setup()
     const details = await service.details('movie', 603)

@@ -485,6 +485,11 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
       return []
     return deps.metadata.browse(list)
   })
+  handle(IpcChannel.MetadataTrailer, tmdbRefSchema, async ([mediaType, tmdbId]) => {
+    if (!deps.settings.get().privacy.onlineMetadataEnabled) return null
+    if (!deps.metadata.status().tokenConfigured) return null
+    return deps.metadata.trailer(mediaType, tmdbId)
+  })
   handle(IpcChannel.MetadataDetails, tmdbRefSchema, ([mediaType, tmdbId]) =>
     deps.metadata.details(mediaType, tmdbId),
   )
