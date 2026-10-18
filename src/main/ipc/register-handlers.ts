@@ -52,6 +52,8 @@ import {
   collectionIdSchema,
   collectionKinds,
   collectionNameSchema,
+  collectionTargetSchema,
+  collectionTitleInputSchema,
 } from '@shared/contracts/collections'
 import type { BookmarkService } from '../application/bookmark-service'
 import type { ThumbnailService } from '../media-engine/thumbnail-service'
@@ -253,6 +255,28 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
     ([id, fileId, toIndex]) => {
       collectionChanged(deps.collections.moveFile(id, fileId, toIndex))
     },
+  )
+  handle(
+    IpcChannel.CollectionsAddTitle,
+    z.tuple([collectionIdSchema, collectionTitleInputSchema]),
+    ([id, title]) => {
+      if (!deps.collections.addTitle(id, title))
+        throw new Error('That collection no longer exists.')
+      collectionChanged(true)
+    },
+  )
+  handle(
+    IpcChannel.CollectionsRemoveTitle,
+    z.tuple([collectionIdSchema, z.enum(['movie', 'tv']), z.number().int().positive()]),
+    ([id, mediaType, tmdbId]) => {
+      collectionChanged(deps.collections.removeTitle(id, mediaType, tmdbId))
+    },
+  )
+  handle(IpcChannel.CollectionsTitles, z.tuple([collectionIdSchema]), ([id]) =>
+    deps.collections.titles(id),
+  )
+  handle(IpcChannel.CollectionsContaining, z.tuple([collectionTargetSchema]), ([target]) =>
+    deps.collections.containing(target),
   )
 
   handle(IpcChannel.ShortcutsExport, noArgs, async () => {

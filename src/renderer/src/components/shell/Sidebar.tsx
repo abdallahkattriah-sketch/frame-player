@@ -3,6 +3,11 @@ import { ListMusic, Plus, Shapes } from 'lucide-react'
 import { NameDialog } from '@renderer/features/collections/NameDialog'
 import { useCollections } from '@renderer/features/collections/use-collections'
 import {
+  addDragged,
+  isCollectionDrag,
+  readCollectionDrag,
+} from '@renderer/features/collections/collection-drag'
+import {
   collectionViewId,
   primaryNavItems,
   secondaryNavItems,
@@ -43,6 +48,9 @@ function NavButton({
 function CollectionsNav({ activeView, onNavigate }: SidebarProps) {
   const { collections } = useCollections()
   const [creating, setCreating] = useState(false)
+  // The collection a poster is being dragged over, and the one that just received a drop.
+  const [dropTarget, setDropTarget] = useState<number | null>(null)
+  const [dropped, setDropped] = useState<number | null>(null)
   return (
     <div className="mt-6 flex min-h-0 flex-col">
       <div className="flex items-center px-3 pb-1">
@@ -65,27 +73,55 @@ function CollectionsNav({ activeView, onNavigate }: SidebarProps) {
           const active = activeView === id
           const Icon = c.kind === 'playlist' ? ListMusic : Shapes
           return (
-            <li key={c.id}>
+            <li
+              key={c.id}
+              onDragOver={(e) => {
+                if (!isCollectionDrag(e)) return
+                e.preventDefault()
+                e.dataTransfer.dropEffect = 'copy'
+                setDropTarget(c.id)
+              }}
+              onDragLeave={() => setDropTarget((t) => (t === c.id ? null : t))}
+              onDrop={(e) => {
+                e.preventDefault()
+                setDropTarget(null)
+                const payload = readCollectionDrag(e)
+                if (!payload) return
+                addDragged(c.id, payload)
+                  .then(() => {
+                    setDropped(c.id)
+                    window.setTimeout(() => setDropped((d) => (d === c.id ? null : d)), 1200)
+                  })
+                  .catch(() => undefined)
+              }}
+            >
               <button
                 type="button"
                 onClick={() => onNavigate(id)}
                 aria-current={active ? 'page' : undefined}
-                className={`flex w-full items-center gap-3 rounded-md px-3 py-1.5 text-sm ${
-                  active
-                    ? 'bg-elevated text-text'
-                    : 'text-muted hover:bg-elevated/60 hover:text-text'
+                data-drop-target={dropTarget === c.id || undefined}
+                className={`flex w-full items-center gap-3 rounded-md px-3 py-1.5 text-sm transition-colors ${
+                  dropTarget === c.id
+                    ? 'bg-accent/15 text-text ring-1 ring-accent'
+                    : dropped === c.id
+                      ? 'bg-accent/10 text-text'
+                      : active
+                        ? 'bg-elevated text-text'
+                        : 'text-muted hover:bg-elevated/60 hover:text-text'
                 }`}
               >
                 <Icon size={16} strokeWidth={1.75} className={active ? 'text-accent' : undefined} />
                 <span className="min-w-0 flex-1 truncate text-left">{c.name}</span>
-                <span className="text-xs text-subtle">{c.itemCount}</span>
+                <span className={`text-xs ${dropped === c.id ? 'text-accent' : 'text-subtle'}`}>
+                  {dropped === c.id ? 'Added' : c.itemCount}
+                </span>
               </button>
             </li>
           )
         })}
         {collections.length === 0 && (
           <li className="px-3 py-1 text-xs text-subtle">
-            Group videos into collections or playlists.
+            Group videos and titles into collections or playlists.
           </li>
         )}
       </ul>

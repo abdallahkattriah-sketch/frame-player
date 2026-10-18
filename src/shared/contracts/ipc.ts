@@ -3,7 +3,13 @@ import type { AppSettings, SettingsPatch } from '../settings/schema'
 import type { Theme } from '../settings/theme'
 import type { CredentialId, CredentialStoreStatus } from './credentials'
 import type { Bookmark, BookmarkEdit } from './bookmarks'
-import type { Collection, CollectionKind } from './collections'
+import type {
+  Collection,
+  CollectionKind,
+  CollectionTarget,
+  CollectionTitle,
+  CollectionTitleInput,
+} from './collections'
 import type { OpenMediaResult, PlayerCommand, PlayerState, ScreenshotResult } from './player'
 import type {
   AddFolderResult,
@@ -149,6 +155,12 @@ export interface FrameApi {
     addItems: (id: number, fileIds: number[]) => Promise<number>
     removeItem: (id: number, fileId: number) => Promise<void>
     moveItem: (id: number, fileId: number, toIndex: number) => Promise<void>
+    /** Saves a TMDB movie or show, whether or not it is in the library. */
+    addTitle: (id: number, title: CollectionTitleInput) => Promise<void>
+    removeTitle: (id: number, mediaType: 'movie' | 'tv', tmdbId: number) => Promise<void>
+    titles: (id: number) => Promise<CollectionTitle[]>
+    /** Ids of the collections that hold a file or title. */
+    containing: (target: CollectionTarget) => Promise<number[]>
   }
   history: {
     /** Forgets all playback progress. */

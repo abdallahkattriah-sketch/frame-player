@@ -1,4 +1,10 @@
-import type { Collection, CollectionKind } from '@shared/contracts/collections'
+import type {
+  Collection,
+  CollectionKind,
+  CollectionTarget,
+  CollectionTitle,
+  CollectionTitleInput,
+} from '@shared/contracts/collections'
 import { transaction, type Database } from '../connection'
 
 /** Collections and playlists of library files, each in a user-defined order. */
@@ -11,9 +17,10 @@ export class CollectionRepository {
   list(): Collection[] {
     return this.db
       .prepare(
-        `SELECT c.id, c.name, c.kind, COUNT(ci.file_id) AS itemCount
-         FROM collections c LEFT JOIN collection_items ci ON ci.collection_id = c.id
-         GROUP BY c.id ORDER BY c.sort_order, c.id`,
+        `SELECT c.id, c.name, c.kind,
+                (SELECT COUNT(*) FROM collection_items ci WHERE ci.collection_id = c.id) +
+                (SELECT COUNT(*) FROM collection_titles ct WHERE ct.collection_id = c.id) AS itemCount
+         FROM collections c ORDER BY c.sort_order, c.id`,
       )
       .all() as unknown as Collection[]
   }
@@ -109,6 +116,72 @@ export class CollectionRepository {
         )
         .all(id) as { fileId: number }[]
     ).map((r) => r.fileId)
+  }
+
+  /** Saves a TMDB title; saving it again refreshes its title, year, and poster. */
+  addTitle(id: number, title: CollectionTitleInput): boolean {
+    const exists = this.db.prepare('SELECT 1 FROM collections WHERE id = ?').get(id)
+    if (!exists) return false
+    this.db
+      .prepare(
+        `INSERT INTO collection_titles
+           (collection_id, media_type, tmdb_id, title, year, poster_path, added_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT (collection_id, media_type, tmdb_id)
+         DO UPDATE SET title = excluded.title, year = excluded.year, poster_path = excluded.poster_path`,
+      )
+      .run(
+        id,
+        title.mediaType,
+        title.tmdbId,
+        title.title,
+        title.year,
+        title.posterPath,
+        this.now().toISOString(),
+      )
+    return true
+  }
+
+  removeTitle(id: number, mediaType: CollectionTitle['mediaType'], tmdbId: number): boolean {
+    return (
+      this.db
+        .prepare(
+          'DELETE FROM collection_titles WHERE collection_id = ? AND media_type = ? AND tmdb_id = ?',
+        )
+        .run(id, mediaType, tmdbId).changes > 0
+    )
+  }
+
+  /** Saved titles in the order they were added, each marked if the library has it. */
+  titles(id: number): CollectionTitle[] {
+    const rows = this.db
+      .prepare(
+        `SELECT ct.media_type AS mediaType, ct.tmdb_id AS tmdbId, ct.title, ct.year,
+                ct.poster_path AS posterPath, ct.added_at AS addedAt,
+                EXISTS (SELECT 1 FROM media_matches m
+                        WHERE m.status = 'matched' AND m.tmdb_media_type = ct.media_type
+                          AND m.tmdb_id = ct.tmdb_id) AS inLibrary
+         FROM collection_titles ct WHERE ct.collection_id = ?
+         ORDER BY ct.added_at, ct.rowid`,
+      )
+      .all(id) as unknown as (Omit<CollectionTitle, 'inLibrary'> & { inLibrary: number })[]
+    return rows.map((r) => ({ ...r, inLibrary: r.inLibrary === 1 }))
+  }
+
+  /** Ids of the collections that hold this file or title. */
+  containing(target: CollectionTarget): number[] {
+    const rows = (
+      'fileId' in target
+        ? this.db
+            .prepare('SELECT collection_id AS id FROM collection_items WHERE file_id = ?')
+            .all(target.fileId)
+        : this.db
+            .prepare(
+              'SELECT collection_id AS id FROM collection_titles WHERE media_type = ? AND tmdb_id = ?',
+            )
+            .all(target.mediaType, target.tmdbId)
+    ) as { id: number }[]
+    return rows.map((r) => r.id)
   }
 
   private renumber(id: number, order: readonly number[]) {

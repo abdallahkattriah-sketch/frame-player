@@ -8,6 +8,7 @@ import { SetupWizard } from '@renderer/features/setup/SetupWizard'
 import { useAppShortcuts } from './use-app-shortcuts'
 import type { NavItemId, ViewId } from '@renderer/components/shell/nav-items'
 import { CollectionView } from '@renderer/features/collections/CollectionView'
+import { displayTitle } from '@renderer/features/library/item-format'
 import { AddToCollectionDialog } from '@renderer/features/collections/AddToCollectionDialog'
 import { useCollections } from '@renderer/features/collections/use-collections'
 import { HomeView } from '@renderer/features/home/HomeView'
@@ -143,8 +144,11 @@ export function App() {
         />
       )}
       {showSetup && <SetupWizard onDone={() => setSetupRequested(false)} />}
-      {collectionItem && (
-        <AddToCollectionDialog item={collectionItem} onClose={() => setCollectionItem(null)} />
+      {collectionItem?.fileId != null && (
+        <AddToCollectionDialog
+          target={{ label: displayTitle(collectionItem), fileId: collectionItem.fileId }}
+          onClose={() => setCollectionItem(null)}
+        />
       )}
       {showPalette && (
         <MainCommandPalette onNavigate={navigate} onClose={() => setShowPalette(false)} />

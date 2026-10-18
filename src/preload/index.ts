@@ -90,6 +90,11 @@ const api: FrameApi = {
     removeItem: (id, fileId) => ipcRenderer.invoke(IpcChannel.CollectionsRemoveItem, id, fileId),
     moveItem: (id, fileId, toIndex) =>
       ipcRenderer.invoke(IpcChannel.CollectionsMoveItem, id, fileId, toIndex),
+    addTitle: (id, title) => ipcRenderer.invoke(IpcChannel.CollectionsAddTitle, id, title),
+    removeTitle: (id, mediaType, tmdbId) =>
+      ipcRenderer.invoke(IpcChannel.CollectionsRemoveTitle, id, mediaType, tmdbId),
+    titles: (id) => ipcRenderer.invoke(IpcChannel.CollectionsTitles, id),
+    containing: (target) => ipcRenderer.invoke(IpcChannel.CollectionsContaining, target),
   },
   history: {
     clearAll: () => ipcRenderer.invoke(IpcChannel.HistoryClearAll),

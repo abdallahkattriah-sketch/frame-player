@@ -1,9 +1,38 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { Check, ChevronLeft, ChevronRight, ExternalLink, Film, Star, Tv, X } from 'lucide-react'
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Film,
+  Plus,
+  Star,
+  Tv,
+  X,
+} from 'lucide-react'
+import { TMDB_IMAGE_PATH, type CollectionTitleInput } from '@shared/contracts/collections'
 import type { MediaMetadata, TmdbSearchResult } from '@shared/contracts/metadata'
 import { Artwork } from '@renderer/components/ui/Artwork'
 import { useSettings } from '@renderer/app/settings-context'
 import { TmdbLogo } from '@renderer/features/settings/TmdbLogo'
+import {
+  AddToCollectionDialog,
+  CollectionMembership,
+} from '@renderer/features/collections/AddToCollectionDialog'
+import { titleDragProps } from '@renderer/features/collections/collection-drag'
+
+/** What a collection stores about a TMDB result (poster only in the shape the cache accepts). */
+export function titleInput(r: TmdbSearchResult): CollectionTitleInput {
+  return {
+    mediaType: r.mediaType,
+    tmdbId: r.tmdbId,
+    title: r.title,
+    year: r.year,
+    posterPath: r.posterPath && TMDB_IMAGE_PATH.test(r.posterPath) ? r.posterPath : null,
+  }
+}
+
+const resultLabel = (r: TmdbSearchResult) => `${r.title}${r.year ? ` (${r.year})` : ''}`
 
 function errorText(e: unknown) {
   return e instanceof Error
@@ -92,8 +121,15 @@ function Carousel({ label, children }: { label: string; children: ReactNode }) {
 }
 
 /** Details of a TMDB title that may not be in the library. */
-function TmdbDetailsDialog({ result, onClose }: { result: TmdbSearchResult; onClose: () => void }) {
+export function TmdbDetailsDialog({
+  result,
+  onClose,
+}: {
+  result: TmdbSearchResult
+  onClose: () => void
+}) {
   const ref = useRef<HTMLDialogElement>(null)
+  const [adding, setAdding] = useState(false)
   const [details, setDetails] = useState<MediaMetadata | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -162,6 +198,7 @@ function TmdbDetailsDialog({ result, onClose }: { result: TmdbSearchResult; onCl
               <Check size={14} aria-hidden /> In your library
             </p>
           )}
+          <CollectionMembership target={{ mediaType: result.mediaType, tmdbId: result.tmdbId }} />
           <p className="leading-relaxed" dir="auto">
             {m?.overview ?? result.overview ?? (error ? '' : 'Loading…')}
           </p>
@@ -197,10 +234,23 @@ function TmdbDetailsDialog({ result, onClose }: { result: TmdbSearchResult; onCl
             >
               <ExternalLink size={14} aria-hidden /> View on TMDB
             </button>
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 hover:bg-elevated"
+            >
+              <Plus size={14} aria-hidden /> Add to collection…
+            </button>
             <TmdbLogo className="ml-auto h-3" />
           </div>
         </div>
       </div>
+      {adding && (
+        <AddToCollectionDialog
+          target={{ label: resultLabel(result), title: titleInput(result) }}
+          onClose={() => setAdding(false)}
+        />
+      )}
     </dialog>
   )
 }
@@ -229,6 +279,7 @@ export function TmdbSearchResults({ query }: { query: string }) {
     error: string | null
   } | null>(null)
   const [open, setOpen] = useState<TmdbSearchResult | null>(null)
+  const [adding, setAdding] = useState<TmdbSearchResult | null>(null)
   const trimmed = query.trim()
 
   useEffect(() => {
@@ -270,10 +321,14 @@ export function TmdbSearchResults({ query }: { query: string }) {
       {current && current.results.length > 0 && (
         <Carousel label="TMDB results">
           {current.results.map((r) => (
-            <li key={`${r.mediaType}-${r.tmdbId}`} className="w-[120px] shrink-0">
+            <li
+              key={`${r.mediaType}-${r.tmdbId}`}
+              className="group/card relative w-[120px] shrink-0"
+            >
               <button
                 type="button"
                 onClick={() => setOpen(r)}
+                {...titleDragProps(titleInput(r))}
                 aria-label={`${r.title}${r.year ? ` (${r.year})` : ''}, ${
                   r.mediaType === 'tv' ? 'TV show' : 'movie'
                 } on TMDB`}
@@ -300,11 +355,26 @@ export function TmdbSearchResults({ query }: { query: string }) {
                   {[r.year, r.mediaType === 'tv' ? 'TV' : 'Movie'].filter(Boolean).join(' · ')}
                 </span>
               </button>
+              <button
+                type="button"
+                aria-label={`Add ${resultLabel(r)} to a collection`}
+                title="Add to collection (or drag onto one in the sidebar)"
+                onClick={() => setAdding(r)}
+                className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-bg/85 text-text opacity-0 shadow transition-opacity hover:bg-accent hover:text-bg focus-visible:opacity-100 group-hover/card:opacity-100"
+              >
+                <Plus size={15} />
+              </button>
             </li>
           ))}
         </Carousel>
       )}
       {open && <TmdbDetailsDialog result={open} onClose={() => setOpen(null)} />}
+      {adding && (
+        <AddToCollectionDialog
+          target={{ label: resultLabel(adding), title: titleInput(adding) }}
+          onClose={() => setAdding(null)}
+        />
+      )}
     </section>
   )
 }

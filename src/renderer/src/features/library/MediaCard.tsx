@@ -2,6 +2,7 @@ import { useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { CheckCircle2, Film, Heart, Tv } from 'lucide-react'
 import type { LibraryItem } from '@shared/contracts/library'
 import { Artwork } from '@renderer/components/ui/Artwork'
+import { fileDragProps } from '@renderer/features/collections/collection-drag'
 import { ItemMenu } from './ItemMenu'
 import {
   displayTitle,
@@ -86,6 +87,7 @@ export function MediaCard({ item, onPlay }: ItemProps) {
       onClick={onPlay}
       onContextMenu={menu.onContextMenu}
       onKeyDown={(e) => menu.onKeyDown(e, onPlay)}
+      {...fileDragProps(item)}
       data-testid="media-card"
       className={`group flex cursor-pointer flex-col gap-2 rounded-lg outline-offset-4 ${
         item.missing ? 'opacity-50' : ''
@@ -143,6 +145,7 @@ export function MediaRow({ item, onPlay }: ItemProps) {
       onClick={onPlay}
       onContextMenu={menu.onContextMenu}
       onKeyDown={(e) => menu.onKeyDown(e, onPlay)}
+      {...fileDragProps(item)}
       data-testid="media-row"
       className={`group grid h-full cursor-pointer grid-cols-[minmax(0,3fr)_minmax(0,2fr)_6rem_6rem_6rem_2rem] items-center gap-3 rounded-md px-3 text-sm hover:bg-surface ${
         item.missing ? 'opacity-50' : ''

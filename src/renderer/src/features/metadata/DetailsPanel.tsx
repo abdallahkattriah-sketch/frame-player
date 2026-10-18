@@ -5,6 +5,7 @@ import type { ItemMetadata } from '@shared/contracts/metadata'
 import { Artwork } from '@renderer/components/ui/Artwork'
 import { displayTitle, episodeCode, formatBytes } from '@renderer/features/library/item-format'
 import { playItems } from '@renderer/features/library/LibraryBrowser'
+import { CollectionMembership } from '@renderer/features/collections/AddToCollectionDialog'
 import { matchRequestFor, useMetadataActions } from './metadata-actions'
 
 const statusText: Record<ItemMetadata['status'], string> = {
@@ -101,6 +102,11 @@ export function DetailsPanel({ item, onClose }: { item: LibraryItem; onClose: ()
               .filter(Boolean)
               .join(' · ')}
           </div>
+          {item.fileId !== null && (
+            <div className="mt-2">
+              <CollectionMembership target={{ fileId: item.fileId }} />
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2">

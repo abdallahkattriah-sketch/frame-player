@@ -136,8 +136,59 @@ test('identifies the library with TMDB, shows artwork and details, and supports 
     await expect
       .poll(() => app.evaluate(() => (globalThis as { openedUrl?: string }).openedUrl))
       .toBe('https://www.themoviedb.org/movie/438631')
+    // Add it to a collection from the details; the details then say so.
+    await tmdbDetails.getByRole('button', { name: 'Add to collection…' }).click()
+    let addDialog = page.getByRole('dialog', { name: 'Add to collection' })
+    await addDialog.getByRole('button', { name: 'New collection…' }).click()
+    const create = page.getByRole('dialog', { name: 'New collection' })
+    await create.getByLabel('Name').fill('Watchlist')
+    await create.getByRole('button', { name: 'Create and add' }).click()
+    await expect(tmdbDetails.getByTestId('in-collections')).toHaveText('In Watchlist')
     await tmdbDetails.getByRole('button', { name: 'Close' }).click()
+
+    // Titles not in the library can be added from the poster's hover button…
+    const lynch = online.getByRole('button', { name: 'Dune (1984), movie on TMDB' })
+    await lynch.hover()
+    await online.getByRole('button', { name: 'Add Dune (1984) to a collection' }).click()
+    addDialog = page.getByRole('dialog', { name: 'Add to collection' })
+    await addDialog.getByRole('button', { name: /Watchlist/ }).click()
+    await expect(addDialog).toHaveCount(0)
+    // …or by dragging the poster onto the collection in the sidebar.
+    const nav = page.getByRole('list', { name: 'Collections' })
+    await online
+      .getByRole('button', { name: 'Dune: Prophecy (2024), TV show on TMDB' })
+      .dragTo(nav.getByRole('button', { name: /Watchlist/ }))
+    await expect(nav).toContainText('Watchlist3')
+
+    // In the collection, hovering a poster tells whether the library has it.
     await searchBox.fill('')
+    await nav.getByRole('button', { name: /Watchlist/ }).click()
+    await expect(page.getByTestId('item-count')).toHaveText('3 items')
+    const saved = page.getByTestId('collection-title')
+    await expect(saved).toHaveCount(3)
+    const owned = saved.filter({ hasText: '2021' })
+    await owned.hover()
+    await expect(owned.getByTestId('ownership')).toBeVisible()
+    await expect(owned.getByTestId('ownership')).toHaveText('In your library')
+    await expect(saved.filter({ hasText: '1984' }).getByTestId('ownership')).toHaveText(
+      'Not in your library',
+    )
+    await saved.filter({ hasText: '1984' }).hover()
+    await page.getByRole('button', { name: 'Remove Dune (1984) from Watchlist' }).click()
+    await expect(saved).toHaveCount(2)
+
+    // A library video dragged onto the collection joins it; its details list the collection.
+    await page.getByRole('button', { name: 'Movies', exact: true }).click()
+    await page
+      .getByRole('button', { name: 'Play The Matrix' })
+      .dragTo(nav.getByRole('button', { name: /Watchlist/ }))
+    await expect(nav).toContainText('Watchlist3')
+    await page.getByRole('button', { name: 'More actions for The Matrix' }).click()
+    await page.getByRole('menuitem', { name: 'Details' }).click()
+    await expect(page.getByTestId('details-panel').getByTestId('in-collections')).toHaveText(
+      'In Watchlist',
+    )
+    await page.getByRole('button', { name: 'Close details' }).click()
 
     // The TMDB results can be switched off.
     await page.getByRole('button', { name: 'Settings', exact: true }).click()

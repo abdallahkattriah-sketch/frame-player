@@ -220,6 +220,25 @@ export const migrations: readonly Migration[] = [
       CREATE INDEX collection_items_file ON collection_items (file_id);
     `,
   },
+  {
+    version: 7,
+    name: 'collection-titles',
+    sql: `
+      -- Movies and shows from TMDB saved to a collection, whether or not they are in the library.
+      -- Title, year, and poster are kept so the collection shows them without going online.
+      CREATE TABLE collection_titles (
+        collection_id INTEGER NOT NULL REFERENCES collections (id) ON DELETE CASCADE,
+        media_type    TEXT NOT NULL CHECK (media_type IN ('movie', 'tv')),
+        tmdb_id       INTEGER NOT NULL CHECK (tmdb_id > 0),
+        title         TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 500),
+        year          INTEGER,
+        poster_path   TEXT,
+        added_at      TEXT NOT NULL,
+        PRIMARY KEY (collection_id, media_type, tmdb_id)
+      ) STRICT;
+      CREATE INDEX collection_titles_tmdb ON collection_titles (media_type, tmdb_id);
+    `,
+  },
 ]
 
 export const latestSchemaVersion = migrations.reduce((max, m) => Math.max(max, m.version), 0)

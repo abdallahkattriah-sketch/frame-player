@@ -4,6 +4,7 @@ import type { Collection } from '@shared/contracts/collections'
 import { ConfirmDialog } from '@renderer/components/ui/ConfirmDialog'
 import { LibraryBrowser, playItems } from '@renderer/features/library/LibraryBrowser'
 import { NameDialog } from './NameDialog'
+import { CollectionTitles, useCollectionTitles } from './CollectionTitles'
 
 export interface CollectionContextValue {
   collection: Collection
@@ -40,6 +41,9 @@ export function CollectionView({
   const [renaming, setRenaming] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const playlist = collection.kind === 'playlist'
+  const allTitles = useCollectionTitles(collection.id)
+  const needle = search.trim().toLocaleLowerCase()
+  const titles = (allTitles ?? []).filter((t) => t.title.toLocaleLowerCase().includes(needle))
 
   const loadOrder = useCallback(() => {
     window.frame.library
@@ -74,9 +78,12 @@ export function CollectionView({
         query={{ view: 'all', collectionId: collection.id, search }}
         defaults={{ mode: playlist ? 'list' : 'grid', sort: 'manual', direction: 'asc' }}
         sortOptions={['manual', 'title', 'year', 'added', 'last-watched']}
-        emptyState={`Nothing here yet. Use “Add to collection…” on any video to add it to this ${
+        emptyState={`Nothing here yet. Use “Add to collection…” or drag posters onto it in the sidebar to add them to this ${
           playlist ? 'playlist' : 'collection'
         }.`}
+        beforeItems={<CollectionTitles collection={collection} titles={titles} />}
+        hideEmptyState={titles.length > 0}
+        extraCount={titles.length}
         headerExtra={
           <div className="flex flex-wrap gap-1.5">
             <button

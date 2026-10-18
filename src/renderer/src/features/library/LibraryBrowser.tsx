@@ -29,6 +29,12 @@ export interface LibraryBrowserProps {
   queueFor?: (items: LibraryItem[], index: number) => LibraryItem[]
   emptyState: ReactNode
   headerExtra?: ReactNode
+  /** Shown between the header and the library items (e.g. a collection's saved titles). */
+  beforeItems?: ReactNode
+  /** Other content is shown, so an empty item list needs no message. */
+  hideEmptyState?: boolean
+  /** Items shown outside the library list, included in the count. */
+  extraCount?: number
 }
 
 type WatchedFilter = NonNullable<LibraryQuery['watched']>
@@ -55,7 +61,11 @@ export function LibraryBrowser({
   queueFor = (items, index) => [items[index] as LibraryItem],
   emptyState,
   headerExtra,
+  beforeItems,
+  hideEmptyState,
+  extraCount = 0,
 }: LibraryBrowserProps) {
+  const total = (n: number) => n + extraCount
   const [pref, setPref] = useViewPreference(viewId, defaults)
   const [watched, setWatched] = useState<WatchedFilter | ''>('')
   const [resolution, setResolution] = useState('')
@@ -79,7 +89,7 @@ export function LibraryBrowser({
         </h1>
         {items && (
           <span className="text-sm text-subtle" data-testid="item-count">
-            {items.length.toLocaleString()} {items.length === 1 ? 'item' : 'items'}
+            {total(items.length).toLocaleString()} {total(items.length) === 1 ? 'item' : 'items'}
           </span>
         )}
         {headerExtra}
@@ -179,6 +189,7 @@ export function LibraryBrowser({
           {error}
         </p>
       )}
+      {beforeItems}
       {items === null ? (
         <div
           className="grid grid-cols-[repeat(auto-fill,minmax(var(--frame-poster-width),1fr))] gap-5"
@@ -189,9 +200,11 @@ export function LibraryBrowser({
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="text-sm text-muted" data-testid="empty-state">
-          {filtered ? 'Nothing matches these filters.' : emptyState}
-        </div>
+        hideEmptyState ? null : (
+          <div className="text-sm text-muted" data-testid="empty-state">
+            {filtered ? 'Nothing matches these filters.' : emptyState}
+          </div>
+        )
       ) : (
         <MediaCollection
           items={items}
