@@ -50,7 +50,7 @@ test('Theme Studio: switch, customize with validation, export and import safely'
   try {
     const page = await app.firstWindow()
     await page.getByRole('button', { name: 'Settings', exact: true }).click()
-    expect(await cssVar(page, '--frame-bg')).toBe('#14161B') // Midnight Cinema by default
+    expect(await cssVar(page, '--frame-bg')).toBe('#181818') // Midnight Cinema by default
 
     await page.getByRole('button', { name: 'Use theme Daylight' }).click()
     await expect.poll(() => cssVar(page, '--frame-bg')).toBe('#F6F5F2')

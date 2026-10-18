@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { ArrowDownWideNarrow, ArrowUpNarrowWide, LayoutGrid, List } from 'lucide-react'
 import type { LibraryItem, LibraryQuery, SortKey } from '@shared/contracts/library'
 import type { ViewPreference } from '@shared/settings/schema'
+import { Dropdown, segmentClass, segmentedClass } from '@renderer/components/ui/Dropdown'
 import { MediaCollection } from './MediaCollection'
 import { itemRef } from './item-format'
 import { useLibraryQuery, useResolutions, useViewPreference } from './use-library'
@@ -31,6 +32,13 @@ export interface LibraryBrowserProps {
 }
 
 type WatchedFilter = NonNullable<LibraryQuery['watched']>
+
+const watchedOptions = [
+  { value: '', label: 'Any status' },
+  { value: 'unwatched', label: 'Unwatched' },
+  { value: 'in-progress', label: 'In progress' },
+  { value: 'watched', label: 'Watched' },
+]
 
 export function playItems(items: LibraryItem[]) {
   if (items.length === 0) return
@@ -78,77 +86,89 @@ export function LibraryBrowser({
         <div className="ml-auto flex flex-wrap items-center gap-2 text-sm">
           {showFilters && (
             <>
-              <select
-                aria-label="Watched status"
-                value={watched}
-                onChange={(e) => setWatched(e.currentTarget.value as WatchedFilter | '')}
-                className="rounded-md border border-border bg-surface px-2 py-1.5"
-              >
-                <option value="">Any status</option>
-                <option value="unwatched">Unwatched</option>
-                <option value="in-progress">In progress</option>
-                <option value="watched">Watched</option>
-              </select>
+              <Dropdown
+                label="Watched status"
+                groups={[
+                  {
+                    value: watched,
+                    options: watchedOptions,
+                    onChange: (v) => setWatched(v as WatchedFilter | ''),
+                  },
+                ]}
+              />
               {resolutions.data && resolutions.data.length > 0 && (
-                <select
-                  aria-label="Resolution"
-                  value={resolution}
-                  onChange={(e) => setResolution(e.currentTarget.value)}
-                  className="rounded-md border border-border bg-surface px-2 py-1.5"
-                >
-                  <option value="">Any resolution</option>
-                  {resolutions.data.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
+                <Dropdown
+                  label="Resolution"
+                  groups={[
+                    {
+                      value: resolution,
+                      options: [
+                        { value: '', label: 'Any resolution' },
+                        ...resolutions.data.map((r) => ({ value: r, label: r })),
+                      ],
+                      onChange: setResolution,
+                    },
+                  ]}
+                />
               )}
             </>
           )}
-          <select
-            aria-label="Sort by"
-            value={pref.sort}
-            onChange={(e) => setPref({ sort: e.currentTarget.value as SortKey })}
-            className="rounded-md border border-border bg-surface px-2 py-1.5"
-          >
-            {sortOptions.map((key) => (
-              <option key={key} value={key}>
-                {sortLabels[key]}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            aria-label={pref.direction === 'asc' ? 'Sort ascending' : 'Sort descending'}
-            title={pref.direction === 'asc' ? 'Ascending' : 'Descending'}
-            onClick={() => setPref({ direction: pref.direction === 'asc' ? 'desc' : 'asc' })}
-            className="rounded-md border border-border p-1.5 hover:bg-elevated"
-          >
-            {pref.direction === 'asc' ? (
-              <ArrowUpNarrowWide size={16} />
-            ) : (
-              <ArrowDownWideNarrow size={16} />
-            )}
-          </button>
-          <div role="group" aria-label="Layout" className="flex rounded-md border border-border">
+          <Dropdown
+            label="Sort"
+            display={
+              <>
+                {pref.direction === 'asc' ? (
+                  <ArrowUpNarrowWide size={14} className="text-subtle" aria-hidden />
+                ) : (
+                  <ArrowDownWideNarrow size={14} className="text-subtle" aria-hidden />
+                )}
+                {sortLabels[pref.sort]}
+              </>
+            }
+            groups={[
+              {
+                label: 'Sort by',
+                value: pref.sort,
+                options: sortOptions.map((key) => ({ value: key, label: sortLabels[key] })),
+                onChange: (v) => setPref({ sort: v as SortKey }),
+              },
+              {
+                label: 'Order',
+                value: pref.direction,
+                options: [
+                  {
+                    value: 'asc',
+                    label: 'Ascending',
+                    icon: <ArrowUpNarrowWide size={14} aria-hidden />,
+                  },
+                  {
+                    value: 'desc',
+                    label: 'Descending',
+                    icon: <ArrowDownWideNarrow size={14} aria-hidden />,
+                  },
+                ],
+                onChange: (v) => setPref({ direction: v as 'asc' | 'desc' }),
+              },
+            ]}
+          />
+          <div role="group" aria-label="Layout" className={segmentedClass}>
             <button
               type="button"
               aria-label="Grid"
               aria-pressed={pref.mode === 'grid'}
               onClick={() => setPref({ mode: 'grid' })}
-              className={`p-1.5 ${pref.mode === 'grid' ? 'bg-elevated text-accent' : 'hover:bg-elevated'}`}
+              className={segmentClass(pref.mode === 'grid')}
             >
-              <LayoutGrid size={16} />
+              <LayoutGrid size={15} />
             </button>
             <button
               type="button"
               aria-label="List"
               aria-pressed={pref.mode === 'list'}
               onClick={() => setPref({ mode: 'list' })}
-              className={`p-1.5 ${pref.mode === 'list' ? 'bg-elevated text-accent' : 'hover:bg-elevated'}`}
+              className={segmentClass(pref.mode === 'list')}
             >
-              <List size={16} />
+              <List size={15} />
             </button>
           </div>
         </div>
@@ -169,7 +189,7 @@ export function LibraryBrowser({
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-center text-sm text-muted">
+        <div className="text-sm text-muted" data-testid="empty-state">
           {filtered ? 'Nothing matches these filters.' : emptyState}
         </div>
       ) : (

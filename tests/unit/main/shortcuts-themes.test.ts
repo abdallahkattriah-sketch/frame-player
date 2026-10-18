@@ -117,14 +117,14 @@ describe('shortcut bindings', () => {
 describe('themes', () => {
   it('ships Midnight Cinema as the default and readable built-in themes', () => {
     expect(findTheme(defaultAppearance).colors).toMatchObject({
-      bg: '#14161B',
-      surface: '#1B1E25',
-      elevated: '#242832',
-      raised: '#303541',
+      bg: '#181818',
+      surface: '#202020',
+      elevated: '#2A2A2A',
+      raised: '#363636',
       text: '#F0EEE9',
-      textMuted: '#A9ADB7',
-      textSubtle: '#777E8B',
-      border: '#363B46',
+      textMuted: '#ABABAB',
+      textSubtle: '#808080',
+      border: '#2E2E2E',
       accent: '#E5A15B',
       danger: '#E36D68',
     })

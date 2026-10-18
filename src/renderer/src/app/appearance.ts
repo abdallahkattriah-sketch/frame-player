@@ -48,7 +48,13 @@ export function applyAppearance(
   for (const key of Object.keys(cssVariable) as ThemeColorKey[]) {
     root.style.setProperty(cssVariable[key], colors[key])
   }
-  root.style.setProperty('color-scheme', luminance(colors.bg) > 0.4 ? 'light' : 'dark')
+  const light = luminance(colors.bg) > 0.4
+  root.style.setProperty('color-scheme', light ? 'light' : 'dark')
+  // The sidebar sits a shade darker than the main area.
+  root.style.setProperty(
+    '--frame-sidebar',
+    `color-mix(in srgb, ${colors.bg}, black ${light ? 4 : 17}%)`,
+  )
   root.style.setProperty('--frame-font-sans', fontStacks[appearance.fontFamily])
   root.style.setProperty('--spacing', spacing[appearance.density])
   root.style.setProperty('--frame-sidebar-width', `${appearance.sidebarWidth}px`)

@@ -20,6 +20,7 @@ import { subtitleStyleProperties } from './media-engine/subtitle-style-propertie
 import { LOUDNESS_FILTER } from './media-engine/audio-filter'
 import { activeSubtitleStyle, defaultSubtitleAppearance } from '@shared/settings/subtitle-style'
 import { IpcChannel } from '@shared/contracts/channels'
+import { findTheme, defaultAppearance, type AppearanceSettings } from '@shared/settings/theme'
 
 const devServerUrl = app.isPackaged ? undefined : process.env['ELECTRON_RENDERER_URL']
 const preloadPath = join(__dirname, '../preload/index.js')
@@ -43,7 +44,17 @@ function loadRoute(win: BrowserWindow, route: string): Promise<void> {
     : win.loadFile(rendererHtml, { hash: route })
 }
 
+/** Toolbar height in the renderer (--frame-toolbar-height); the window buttons sit inside it. */
+const TITLE_BAR_HEIGHT = 52
+
+/** Colours the Windows caption buttons to blend into the app background. */
+function titleBarOverlay(appearance: AppearanceSettings) {
+  const { colors } = findTheme(appearance)
+  return { color: colors.bg, symbolColor: colors.textMuted, height: TITLE_BAR_HEIGHT }
+}
+
 function createMainWindow(): BrowserWindow {
+  const appearance = services?.settings.get().appearance ?? defaultAppearance
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -51,8 +62,10 @@ function createMainWindow(): BrowserWindow {
     minHeight: 520,
     show: false,
     title: 'Frame',
-    backgroundColor: '#14161B',
+    backgroundColor: findTheme(appearance).colors.bg,
     autoHideMenuBar: true,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: titleBarOverlay(appearance),
     webPreferences: secureWebPreferences(preloadPath),
   })
 
@@ -176,7 +189,13 @@ if (!app.requestSingleInstanceLock()) {
       ...services,
       player,
       onLibraryChanged: notifyLibraryChanged,
-      onSettingsChanged: (settings) => broadcast(IpcChannel.SettingsChanged, settings),
+      onSettingsChanged: (settings) => {
+        broadcast(IpcChannel.SettingsChanged, settings)
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.setTitleBarOverlay(titleBarOverlay(settings.appearance))
+          mainWindow.setBackgroundColor(findTheme(settings.appearance).colors.bg)
+        }
+      },
       openPath: (path) => shell.openPath(path),
       openExternal: (url) => shell.openExternal(url),
       showMainView: (view) => {

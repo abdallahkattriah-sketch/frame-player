@@ -104,6 +104,29 @@ test('collections and playlists: create, add, reorder, rename, delete without to
     // Add two movies from the library.
     await page.getByRole('button', { name: 'Movies', exact: true }).click()
 
+    // Sort field and direction share one styled dropdown.
+    const sort = page.getByRole('button', { name: 'Sort', exact: true })
+    await sort.click()
+    await page.getByRole('option', { name: 'Descending' }).click()
+    await expect(page.getByRole('listbox')).toHaveCount(0)
+    await sort.press('ArrowDown')
+    await expect(page.getByRole('option', { name: 'Descending' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('listbox')).toHaveCount(0)
+    await expect
+      .poll(() =>
+        page
+          .getByRole('button', { name: /^Play / })
+          .first()
+          .getAttribute('aria-label'),
+      )
+      .toBe('Play Charlie')
+    await sort.click()
+    await page.getByRole('option', { name: 'Ascending' }).click()
+
     // Right-clicking a poster opens the full menu at the pointer, not clipped by the poster.
     const card = page.getByRole('button', { name: 'Play Bravo' })
     // (The list may re-render while the scan finishes; click() waits for a stable card.)
@@ -210,7 +233,7 @@ test('settings: storage, privacy, audio, and reset with confirmation', async () 
     const reset = page.getByRole('dialog', { name: 'Reset all settings?' })
     await expect(reset).toContainText('saved API keys are kept')
     await reset.getByRole('button', { name: 'Reset settings' }).click()
-    await expect.poll(() => cssVar(page, '--frame-bg')).toBe('#14161B')
+    await expect.poll(() => cssVar(page, '--frame-bg')).toBe('#181818')
     const after = await page.evaluate(() => window.frame.settings.get())
     expect(after.audio).toEqual({ preferredLanguages: [], normalizeLoudness: false })
     expect(after.privacy.onlineSubtitlesEnabled).toBe(true)

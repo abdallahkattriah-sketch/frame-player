@@ -125,9 +125,9 @@ export function App() {
       >
         {query && view !== 'settings' ? (
           // Searching: titles on TMDB above the matches in the library.
-          <div className="flex h-full flex-col gap-6">
+          <div className="flex flex-col gap-6">
             <TmdbSearchResults query={query} />
-            <div className="min-h-0 flex-1">{content}</div>
+            <div>{content}</div>
           </div>
         ) : (
           content

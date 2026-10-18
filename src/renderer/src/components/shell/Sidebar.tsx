@@ -109,9 +109,9 @@ export function Sidebar({ activeView, onNavigate }: SidebarProps) {
   return (
     <nav
       aria-label="Main"
-      className="flex w-[var(--frame-sidebar-width)] shrink-0 flex-col border-r border-border bg-surface p-3"
+      className="flex w-[var(--frame-sidebar-width)] shrink-0 flex-col border-r border-border bg-sidebar p-3"
     >
-      <div className="px-3 pb-6 pt-2 text-lg font-semibold tracking-tight">
+      <div className="app-drag -mx-3 -mt-3 px-6 pb-6 pt-5 text-lg font-semibold tracking-tight">
         Frame<span className="text-accent">.</span>
       </div>
       <ul className="flex flex-col gap-1">

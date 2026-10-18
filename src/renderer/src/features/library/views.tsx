@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { LibraryView } from '@shared/contracts/library'
+import { segmentClass, segmentedClass } from '@renderer/components/ui/Dropdown'
 import { LibraryBrowser } from './LibraryBrowser'
 
 const libraryEmpty = 'No videos yet. Add library folders in Settings.'
@@ -45,18 +46,14 @@ export function AllMediaView({ search }: { search: string }) {
               : libraryEmpty
       }
       headerExtra={
-        <div
-          role="group"
-          aria-label="Show"
-          className="flex rounded-md border border-border text-sm"
-        >
+        <div role="group" aria-label="Show" className={segmentedClass}>
           {allMediaFilters.map((f) => (
             <button
               key={f.view}
               type="button"
               aria-pressed={view === f.view}
               onClick={() => setView(f.view)}
-              className={`px-3 py-1 ${view === f.view ? 'bg-elevated text-accent' : 'text-muted hover:text-text'}`}
+              className={segmentClass(view === f.view)}
             >
               {f.label}
             </button>
