@@ -222,6 +222,17 @@ export class MetadataRepository {
       )
   }
 
+  /** "movie:603", "tv:1396", … for every TMDB entry something local is matched to. */
+  matchedTmdbKeys(): Set<string> {
+    const rows = this.db
+      .prepare(
+        `SELECT DISTINCT tmdb_media_type AS mediaType, tmdb_id AS tmdbId FROM media_matches
+         WHERE status = 'matched'`,
+      )
+      .all() as { mediaType: string; tmdbId: number }[]
+    return new Set(rows.map((r) => `${r.mediaType}:${r.tmdbId}`))
+  }
+
   getMetadata(mediaType: MetadataMediaType, tmdbId: number): MediaMetadata | undefined {
     const r = this.db
       .prepare(

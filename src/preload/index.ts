@@ -107,6 +107,11 @@ const api: FrameApi = {
     reject: (target) => ipcRenderer.invoke(IpcChannel.MetadataReject, target),
     reidentify: (target) => ipcRenderer.invoke(IpcChannel.MetadataReidentify, target),
     item: (target) => ipcRenderer.invoke(IpcChannel.MetadataItem, target),
+    discover: (query) => ipcRenderer.invoke(IpcChannel.MetadataDiscover, query),
+    details: (mediaType, tmdbId) =>
+      ipcRenderer.invoke(IpcChannel.MetadataDetails, mediaType, tmdbId),
+    openTmdbPage: (mediaType, tmdbId) =>
+      ipcRenderer.invoke(IpcChannel.MetadataOpenTmdbPage, mediaType, tmdbId),
     onStatus: (listener) => subscribe<MetadataStatus>(IpcChannel.MetadataStatusChanged, listener),
   },
   bookmarks: {

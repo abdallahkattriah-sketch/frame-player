@@ -22,6 +22,10 @@ How Frame uses it:
   `api_key=<key>` for a v3 key). Images come from TMDB's image server.
 - Sent: titles and years parsed from file names (and season/episode numbers). Never file paths,
   file contents or anything identifying you.
+- Library searches also list matching movies and shows on TMDB (the search text is sent to
+  TMDB); switch this off in Settings → TMDB metadata → "Also show movies and shows from TMDB
+  when searching". Their details are cached like library items; "View on TMDB" opens the
+  title's page on themoviedb.org in your browser.
 - Matches are automatic only when Frame is confident; others wait in **All Media → Unmatched**
   for you to choose. Language of titles and descriptions: Settings → TMDB metadata.
 - Responses and images are cached locally, refreshed after 30 days and deleted after 180 days

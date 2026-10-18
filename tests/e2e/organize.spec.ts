@@ -106,12 +106,12 @@ test('collections and playlists: create, add, reorder, rename, delete without to
 
     // Right-clicking a poster opens the full menu at the pointer, not clipped by the poster.
     const card = page.getByRole('button', { name: 'Play Bravo' })
-    await expect(card).toBeVisible()
-    const box = await card.boundingBox()
-    if (!box) throw new Error('no card')
-    await page.mouse.click(box.x + box.width / 2, box.y + 40, { button: 'right' })
+    // (The list may re-render while the scan finishes; click() waits for a stable card.)
+    await card.click({ button: 'right', position: { x: 60, y: 40 } })
     const items = page.getByRole('menu', { name: 'Actions for Bravo' }).getByRole('menuitem')
     await expect(items.first()).toBeVisible()
+    const box = await card.boundingBox()
+    if (!box) throw new Error('no card')
     const last = items.last()
     const lastBox = await last.boundingBox()
     if (!lastBox) throw new Error('no menu item')

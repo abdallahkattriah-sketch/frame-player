@@ -15,6 +15,21 @@ export interface MatchCandidate {
   confidence: number
 }
 
+/** A movie or show found on TMDB by a search, whether or not it is in the library. */
+export interface TmdbSearchResult {
+  tmdbId: number
+  mediaType: MetadataMediaType
+  title: string
+  year: number | null
+  overview: string | null
+  posterPath: string | null
+  /** A library file or show is matched to this entry. */
+  inLibrary: boolean
+}
+
+export const tmdbSearchQuerySchema = z.string().trim().min(2).max(200)
+export const tmdbRefSchema = z.tuple([z.enum(['movie', 'tv']), z.number().int().positive()])
+
 export type MatchStatus = 'matched' | 'candidates' | 'no-match' | 'rejected' | 'error'
 
 export interface CastMember {

@@ -19,7 +19,12 @@ import {
 import type { LibraryQueryRepository } from '../database/repositories/library-query-repository'
 import type { HistoryRepository } from '../database/repositories/history-repository'
 import type { MetadataService } from '../metadata/metadata-service'
-import { matchTargetSchema, metadataSearchSchema } from '@shared/contracts/metadata'
+import {
+  matchTargetSchema,
+  metadataSearchSchema,
+  tmdbRefSchema,
+  tmdbSearchQuerySchema,
+} from '@shared/contracts/metadata'
 import {
   subtitleDownloadSchema,
   subtitleProviderIds,
@@ -68,6 +73,8 @@ export interface IpcDependencies {
   storage: StorageService
   /** Main data folder (opened from Settings > Storage). */
   openPath: (path: string) => Promise<string>
+  /** Opens an https URL in the default browser. */
+  openExternal: (url: string) => Promise<void>
   onLibraryChanged: () => void
   onSettingsChanged: (settings: AppSettings) => void
   showMainView: (view: 'settings') => void
@@ -432,6 +439,23 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
   )
   handle(IpcChannel.MetadataItem, z.tuple([matchTargetSchema]), ([target]) =>
     deps.metadata.itemMetadata(target),
+  )
+  handle(IpcChannel.MetadataDiscover, z.tuple([tmdbSearchQuerySchema]), async ([query]) => {
+    const { metadata, privacy } = deps.settings.get()
+    if (
+      !metadata.searchTmdb ||
+      !privacy.onlineMetadataEnabled ||
+      !deps.metadata.status().tokenConfigured
+    )
+      return []
+    return deps.metadata.discover(query)
+  })
+  handle(IpcChannel.MetadataDetails, tmdbRefSchema, ([mediaType, tmdbId]) =>
+    deps.metadata.details(mediaType, tmdbId),
+  )
+  // The URL is built here from a validated type and number; nothing else can be opened.
+  handle(IpcChannel.MetadataOpenTmdbPage, tmdbRefSchema, ([mediaType, tmdbId]) =>
+    deps.openExternal(`https://www.themoviedb.org/${mediaType}/${tmdbId}`),
   )
 
   handle(IpcChannel.SubtitleProviders, noArgs, () => deps.subtitles.statuses())

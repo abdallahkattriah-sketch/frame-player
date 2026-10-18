@@ -16,7 +16,8 @@ accounts, analytics or telemetry.
   names, Continue Watching, recently added, favorites, missing-file handling, fast search, grid
   and list views that stay smooth with tens of thousands of files.
 - **TMDB metadata** (optional): automatic matching with manual correction, posters, cast and
-  descriptions, cached locally.
+  descriptions, cached locally; searches can also show matching titles from TMDB that are not
+  in your library.
 - **Subtitles**: files next to your videos are found automatically; online search and safe
   download from OpenSubtitles and SubSource (optional, your own keys); Subtitle Studio for
   fonts, colors, outline, background and position with saved profiles.

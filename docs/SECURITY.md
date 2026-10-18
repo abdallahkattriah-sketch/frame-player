@@ -7,11 +7,11 @@ It has no accounts, servers, analytics or telemetry.
 
 Only when the matching feature is set up and switched on (Settings → Privacy):
 
-| Service       | Sent                                                                                                                                   | Never sent                |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
-| TMDB          | Titles and years parsed from file names, season/episode numbers, your TMDB token, the chosen language                                  | File paths, files, hashes |
-| OpenSubtitles | Title/year or TMDB/IMDb ids, season/episode, languages, your API key (and login if set); the 16-character file hash only if you opt in | Files, paths              |
-| SubSource     | Title or IMDb id, languages, your API key                                                                                              | Files, paths, hashes      |
+| Service       | Sent                                                                                                                                                  | Never sent                |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| TMDB          | Titles and years parsed from file names, season/episode numbers, text you type in search (if TMDB search is on), your TMDB token, the chosen language | File paths, files, hashes |
+| OpenSubtitles | Title/year or TMDB/IMDb ids, season/episode, languages, your API key (and login if set); the 16-character file hash only if you opt in                | Files, paths              |
+| SubSource     | Title or IMDb id, languages, your API key                                                                                                             | Files, paths, hashes      |
 
 ## Credentials
 
@@ -32,6 +32,8 @@ Only when the matching feature is set up and switched on (Settings → Privacy):
 - File access is limited to what the user chose (native dialogs, dropped files that must be
   existing videos, library folders); paths for playback come from the database, not from the
   page. The `frame-art://` protocol serves only cache files whose names Frame generates.
+- The only web page Frame opens in your browser is a title's page on themoviedb.org, built from
+  a validated TMDB id in the main process.
 - No shell execution. mpv is started with an argument array, without a shell, with user
   configuration and scripts disabled and online streaming disabled (`--ytdl=no`); the renderer
   can only send high-level player commands, never raw mpv commands. mpv cannot outlive Frame.

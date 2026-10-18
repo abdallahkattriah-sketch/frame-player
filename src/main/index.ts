@@ -178,6 +178,7 @@ if (!app.requestSingleInstanceLock()) {
       onLibraryChanged: notifyLibraryChanged,
       onSettingsChanged: (settings) => broadcast(IpcChannel.SettingsChanged, settings),
       openPath: (path) => shell.openPath(path),
+      openExternal: (url) => shell.openExternal(url),
       showMainView: (view) => {
         const win = mainWindow && !mainWindow.isDestroyed() ? mainWindow : createMainWindow()
         if (win.isMinimized()) win.restore()

@@ -3,6 +3,7 @@ import type { LibraryItem } from '@shared/contracts/library'
 import { AppShell } from '@renderer/components/shell/AppShell'
 import { MainCommandPalette } from './MainCommandPalette'
 import { useSettings } from './settings-context'
+import { TmdbSearchResults } from '@renderer/features/metadata/TmdbSearchResults'
 import { SetupWizard } from '@renderer/features/setup/SetupWizard'
 import { useAppShortcuts } from './use-app-shortcuts'
 import type { NavItemId, ViewId } from '@renderer/components/shell/nav-items'
@@ -122,7 +123,15 @@ export function App() {
           )
         }
       >
-        {content}
+        {query && view !== 'settings' ? (
+          // Searching: titles on TMDB above the matches in the library.
+          <div className="flex h-full flex-col gap-6">
+            <TmdbSearchResults query={query} />
+            <div className="min-h-0 flex-1">{content}</div>
+          </div>
+        ) : (
+          content
+        )}
       </AppShell>
       {subtitleItem?.fileId != null && (
         <SubtitleSearchDialog

@@ -306,6 +306,47 @@ describe('MetadataService identification', () => {
     expect(service.itemMetadata({ fileId: idOf('Unknown Home Video.mkv') }).status).toBe('no-match')
   })
 
+  it('searches TMDB beyond the library, most popular first, marking library titles', async () => {
+    const json = (body: unknown) => () =>
+      new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } })
+    const { service } = setup({
+      overrides: {
+        '/3/search/movie?query=matrix': json({
+          page: 1,
+          total_results: 2,
+          results: [
+            { id: 604, title: 'The Matrix Reloaded', release_date: '2003-05-15', popularity: 40 },
+            { id: 603, title: 'The Matrix', release_date: '1999-03-30', popularity: 90 },
+          ],
+        }),
+        '/3/search/tv?query=matrix': json({
+          page: 1,
+          total_results: 1,
+          results: [{ id: 9, name: 'Matrix', first_air_date: '1993-03-01', popularity: 5 }],
+        }),
+      },
+    })
+    await service.identifyPending()
+    const results = await service.discover('matrix')
+    expect(results.map((r) => [r.mediaType, r.tmdbId, r.year, r.inLibrary])).toEqual([
+      ['movie', 603, 1999, true],
+      ['movie', 604, 2003, false],
+      ['tv', 9, 1993, false],
+    ])
+  })
+
+  it('fetches details for any TMDB title once and then serves them from the cache', async () => {
+    const { service, calls } = setup()
+    const details = await service.details('movie', 603)
+    expect(details).toMatchObject({ title: 'The Matrix', runtimeMinutes: 136 })
+    const before = calls.length
+    await service.details('movie', 603)
+    expect(calls.length).toBe(before)
+    await expect(setup({ enabled: false }).service.details('movie', 603)).rejects.toThrow(
+      /turned off/,
+    )
+  })
+
   it('matches a show once and attaches episode details to each local episode', async () => {
     const { service, calls, idOf } = setup()
     await service.identifyPending()

@@ -1,4 +1,5 @@
 import type {
+  TmdbSearchResult,
   EpisodeMetadata,
   ItemMetadata,
   MatchCandidate,
@@ -120,6 +121,47 @@ export class MetadataService {
     const raw = await this.searchRaw(q.mediaType, q.query, q.year)
     return rankCandidates({ title: q.query, year: q.year ?? null, mediaType: q.mediaType }, raw, 20)
       .candidates
+  }
+
+  /**
+   * Movies and shows on TMDB matching a free-text search (not limited to the library),
+   * most popular first, marking the ones already in the library.
+   */
+  async discover(query: string, limit = 20): Promise<TmdbSearchResult[]> {
+    this.assertOnline()
+    // One failing search (movies or TV) still shows the other's results.
+    const settled = await Promise.allSettled([
+      this.searchRaw('movie', query, undefined),
+      this.searchRaw('tv', query, undefined),
+    ])
+    const found = settled.flatMap((s) => (s.status === 'fulfilled' ? s.value : []))
+    const failure = settled.find((s) => s.status === 'rejected')
+    if (found.length === 0 && failure) throw failure.reason
+    const inLibrary = this.options.repository.matchedTmdbKeys()
+    return found
+      .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0))
+      .slice(0, limit)
+      .map((r) => ({
+        tmdbId: r.tmdbId,
+        mediaType: r.mediaType,
+        title: r.title,
+        year: yearOf(r.date),
+        overview: r.overview,
+        posterPath: r.posterPath,
+        inLibrary: inLibrary.has(`${r.mediaType}:${r.tmdbId}`),
+      }))
+  }
+
+  /** Details of any TMDB movie or show, from the cache when recent enough. */
+  async details(mediaType: MetadataMediaType, tmdbId: number): Promise<MediaMetadata> {
+    const stored = this.options.repository.getMetadata(mediaType, tmdbId)
+    const now = (this.options.now?.() ?? new Date()).getTime()
+    if (stored && now - Date.parse(stored.fetchedAt) < REFRESH_AGE_MS) return stored
+    this.assertOnline()
+    await this.fetchAndStore(mediaType, tmdbId, [])
+    const fetched = this.options.repository.getMetadata(mediaType, tmdbId)
+    if (!fetched) throw new Error('TMDB returned no details for this title.')
+    return fetched
   }
 
   /** Candidates stored for a target, searching now if there are none. */

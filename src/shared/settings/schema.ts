@@ -65,6 +65,8 @@ export const metadataSettingsSchema = z.object({
   language: z.string().regex(/^[a-z]{2}(?:-[A-Z]{2})?$/, 'Use a code like en-US'),
   /** Identify new files automatically after scans. */
   autoIdentify: z.boolean(),
+  /** Library searches also show matching movies and shows from TMDB. */
+  searchTmdb: z.boolean(),
 })
 
 const languageCode = z.string().regex(/^[a-z]{2}(?:-[A-Z]{2})?$/)
@@ -121,7 +123,7 @@ export const defaultSettings: AppSettings = {
   },
   audio: { preferredLanguages: [], normalizeLoudness: false },
   library: { videoExtensions: [...defaultVideoExtensions] },
-  metadata: { language: 'en-US', autoIdentify: true },
+  metadata: { language: 'en-US', autoIdentify: true, searchTmdb: true },
   subtitles: {
     preferredLanguages: ['en'],
     hearingImpaired: 'include',

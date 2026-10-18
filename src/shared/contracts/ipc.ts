@@ -20,6 +20,8 @@ import type {
   ItemMetadata,
   MatchCandidate,
   MatchTarget,
+  MediaMetadata,
+  TmdbSearchResult,
   MetadataMediaType,
   MetadataSearch,
   MetadataStatus,
@@ -166,6 +168,14 @@ export interface FrameApi {
     reject: (target: MatchTarget) => Promise<void>
     reidentify: (target: MatchTarget) => Promise<void>
     item: (target: MatchTarget) => Promise<ItemMetadata>
+    /**
+     * TMDB movies and shows matching a search, beyond the library. Empty when the option or
+     * online lookups are off or no token is saved.
+     */
+    discover: (query: string) => Promise<TmdbSearchResult[]>
+    details: (mediaType: MetadataMediaType, tmdbId: number) => Promise<MediaMetadata>
+    /** Opens the title's page on themoviedb.org in the default browser. */
+    openTmdbPage: (mediaType: MetadataMediaType, tmdbId: number) => Promise<void>
     onStatus: (listener: (status: MetadataStatus) => void) => () => void
   }
   /** Scene bookmarks of the video that is playing. */

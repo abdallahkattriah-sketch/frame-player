@@ -47,6 +47,20 @@ const routes: Record<string, unknown> = {
       },
     ],
   },
+  '/3/search/tv?query=Dune': {
+    page: 1,
+    total_results: 1,
+    results: [
+      {
+        id: 90228,
+        name: 'Dune: Prophecy',
+        first_air_date: '2024-11-17',
+        poster_path: null,
+        overview: 'The Sisterhood.',
+        popularity: 50,
+      },
+    ],
+  },
   '/3/movie/603?append_to_response=credits,external_ids': {
     id: 603,
     title: 'The Matrix',

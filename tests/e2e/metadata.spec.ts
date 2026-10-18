@@ -108,6 +108,45 @@ test('identifies the library with TMDB, shows artwork and details, and supports 
     await expect(details).toContainText('tt0133093')
     await details.getByRole('button', { name: 'Close details' }).click()
 
+    // Searching also lists titles on TMDB, including ones not in the library.
+    const searchBox = page.getByRole('searchbox', { name: 'Search library' })
+    await searchBox.fill('Dune')
+    const online = page.getByTestId('tmdb-results')
+    await expect(
+      online.getByRole('button', { name: 'Dune: Prophecy (2024), TV show on TMDB' }),
+    ).toBeVisible()
+    await expect(online.getByRole('button', { name: 'Dune (2021), movie on TMDB' })).toContainText(
+      'In library',
+    )
+    await expect(
+      online.getByRole('button', { name: 'Dune (1984), movie on TMDB' }),
+    ).not.toContainText('In library')
+
+    await online.getByRole('button', { name: 'Dune (2021), movie on TMDB' }).click()
+    const tmdbDetails = page.getByTestId('tmdb-details')
+    await expect(tmdbDetails).toContainText('Science Fiction')
+    await expect(tmdbDetails).toContainText('In your library')
+    // "View on TMDB" opens the browser; record the URL instead of opening it.
+    await app.evaluate(({ shell }) => {
+      shell.openExternal = (async (url: string) => {
+        ;(globalThis as { openedUrl?: string }).openedUrl = url
+      }) as never
+    })
+    await tmdbDetails.getByRole('button', { name: 'View on TMDB' }).click()
+    await expect
+      .poll(() => app.evaluate(() => (globalThis as { openedUrl?: string }).openedUrl))
+      .toBe('https://www.themoviedb.org/movie/438631')
+    await tmdbDetails.getByRole('button', { name: 'Close' }).click()
+    await searchBox.fill('')
+
+    // The TMDB results can be switched off.
+    await page.getByRole('button', { name: 'Settings', exact: true }).click()
+    await page.getByLabel('Also show movies and shows from TMDB when searching').uncheck()
+    await searchBox.fill('Dune')
+    await expect(page.getByRole('heading', { name: 'Results for “Dune”' })).toBeVisible()
+    await expect(page.getByTestId('tmdb-results')).toHaveCount(0)
+    await searchBox.fill('')
+
     // Required TMDB attribution.
     await page.getByRole('button', { name: 'Settings', exact: true }).click()
     await expect(page.getByTestId('tmdb-attribution')).toHaveText(

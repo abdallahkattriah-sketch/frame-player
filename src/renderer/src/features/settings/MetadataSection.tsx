@@ -220,6 +220,15 @@ export function MetadataSection() {
           />
           Identify new files automatically
         </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={settings?.metadata.searchTmdb ?? true}
+            onChange={(e) => void update({ metadata: { searchTmdb: e.currentTarget.checked } })}
+            className="accent-[var(--frame-accent)]"
+          />
+          Also show movies and shows from TMDB when searching
+        </label>
         <button
           type="button"
           disabled={!configured || !enabled || status?.identifying}

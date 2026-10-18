@@ -102,7 +102,7 @@ npx vitest run tests/integration
 | Production build succeeds                                                   | Automated — `npm run dist` produced the installer and the portable exe (2026-10-18)                                                                   |
 | Packaged app launches, finds and starts its bundled mpv, plays a local file | Automated — `scripts/build/smoke-test.mjs` on `release/win-unpacked` and on the portable exe: playback time advances, read from mpv over its own pipe |
 | No Vite or dev server needed                                                | Automated — the smoke test sets a bogus dev-server URL and fails if any window fails to load; development switches are shown to be ignored            |
-| Packaged app keeps data where expected, cleans up mpv                       | Automated — smoke test (portable data folder used, `%APPDATA%\Frame` untouched, mpv ends with Frame)                                                   |
+| Packaged app keeps data where expected, cleans up mpv                       | Automated — smoke test (portable data folder used, `%APPDATA%\Frame` untouched, mpv ends with Frame)                                                  |
 | Installer installs, creates shortcuts, uninstalls                           | **Not run** — installing changes the machine; to be done by hand on a clean Windows account                                                           |
 | Arabic subtitles in the packaged app                                        | **Not run** — check by hand after installing                                                                                                          |
 
