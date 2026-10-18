@@ -143,6 +143,9 @@ export function TmdbDetailsDialog({
   ].filter(Boolean)
   const backdrop = m?.backdropPath ?? result.backdropPath
   const Icon = result.mediaType === 'tv' ? Tv : Film
+  const typeLabel = [result.mediaType === 'tv' ? 'TV show' : 'Movie', m?.year ?? result.year]
+    .filter(Boolean)
+    .join(' · ')
 
   return (
     <dialog
@@ -168,7 +171,21 @@ export function TmdbDetailsDialog({
       className="m-auto w-[min(920px,94vw)] overflow-hidden rounded-2xl border border-border bg-surface p-0 text-sm text-text shadow-2xl backdrop:bg-black/70"
       data-testid="tmdb-details"
     >
-      <div className="max-h-[90vh] overflow-y-auto">
+      <div className="flex items-center gap-2 border-b border-border/60 px-4 py-2 text-xs text-muted">
+        <Icon size={14} aria-hidden />
+        <span className="min-w-0 flex-1 truncate">
+          {playing && trailer ? (trailer.name ?? 'Trailer') : typeLabel}
+        </span>
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={close}
+          className="rounded-full p-1.5 text-muted transition hover:rotate-90 hover:bg-elevated hover:text-text"
+        >
+          <X size={17} />
+        </button>
+      </div>
+      <div className="max-h-[calc(90vh-2.75rem)] overflow-y-auto">
         <div className="relative aspect-video w-full overflow-hidden bg-black">
           {backdrop ? (
             <Artwork
@@ -190,15 +207,20 @@ export function TmdbDetailsDialog({
               src={`${YOUTUBE_EMBED}${trailer.youtubeKey}?autoplay=1&mute=${
                 playing.muted ? 1 : 0
               }&rel=0&playsinline=1`}
-              allow="autoplay; encrypted-media; picture-in-picture"
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+              allowFullScreen
               sandbox="allow-scripts allow-same-origin allow-presentation"
               referrerPolicy="strict-origin-when-cross-origin"
               className="absolute inset-0 h-full w-full animate-[frame-fade_800ms_ease-out]"
               data-testid="trailer"
             />
           )}
-          {/* Fade the picture into the window so the text below reads as part of it. */}
-          <div className="pointer-events-none absolute inset-x-0 -bottom-px h-2/5 bg-linear-to-t from-surface via-surface/60 to-transparent" />
+          {/* Fade the still picture into the window; hidden while the player is showing. */}
+          <div
+            className={`pointer-events-none absolute inset-x-0 -bottom-px h-2/5 bg-linear-to-t from-surface via-surface/60 to-transparent transition-opacity duration-500 ${
+              playing ? 'opacity-0' : 'opacity-100'
+            }`}
+          />
           {trailer && !playing && (
             <button
               type="button"
@@ -208,17 +230,13 @@ export function TmdbDetailsDialog({
               <Play size={16} className="fill-current" aria-hidden /> Play trailer
             </button>
           )}
-          <button
-            type="button"
-            aria-label="Close"
-            onClick={close}
-            className="absolute right-3 top-3 rounded-full bg-black/55 p-2 text-white backdrop-blur transition hover:rotate-90 hover:bg-black/80"
-          >
-            <X size={18} />
-          </button>
         </div>
 
-        <div className="frame-stagger relative -mt-20 flex gap-6 px-7 pb-7">
+        <div
+          className={`frame-stagger relative flex gap-6 px-7 pb-7 transition-[margin] duration-500 ${
+            playing ? 'mt-6' : '-mt-20'
+          }`}
+        >
           <div className="aspect-[2/3] w-36 shrink-0 overflow-hidden rounded-lg border border-border shadow-2xl">
             <Artwork
               kind="poster"
@@ -232,7 +250,11 @@ export function TmdbDetailsDialog({
               }
             />
           </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-2 pt-12">
+          <div
+            className={`flex min-w-0 flex-1 flex-col gap-2 transition-[padding] duration-500 ${
+              playing ? 'pt-0' : 'pt-12'
+            }`}
+          >
             <h2 className="text-2xl font-bold tracking-tight" dir="auto">
               {m?.title ?? result.title}
             </h2>

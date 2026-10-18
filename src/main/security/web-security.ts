@@ -29,8 +29,11 @@ export function isAllowedAppUrl(url: string, devServerUrl: string | undefined): 
 
 export function hardenSession(session: Session): void {
   // Frame needs no camera, microphone, notifications, geolocation, etc.
-  session.setPermissionRequestHandler((_wc, _permission, callback) => callback(false))
-  session.setPermissionCheckHandler(() => false)
+  // Only fullscreen is allowed (the trailer player's fullscreen button).
+  session.setPermissionRequestHandler((_wc, permission, callback) =>
+    callback(permission === 'fullscreen'),
+  )
+  session.setPermissionCheckHandler((_wc, permission) => permission === 'fullscreen')
 }
 
 /** Origin of embedded trailers; the only third-party content Frame shows. */
