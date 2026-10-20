@@ -8,6 +8,7 @@ import {
   AddToCollectionDialog,
   CollectionMembership,
 } from '@renderer/features/collections/AddToCollectionDialog'
+import { PeopleStrip } from '@renderer/features/people/PeopleStrip'
 import { resultLabel, titleInput } from './tmdb-title'
 
 const YOUTUBE_EMBED = 'https://www.youtube-nocookie.com/embed/'
@@ -283,13 +284,15 @@ export function TmdbDetailsDialog({
             <p className="max-w-prose leading-relaxed" dir="auto">
               {m?.overview ?? result.overview ?? (error ? '' : 'Loading…')}
             </p>
-            {m && m.creators.length > 0 && (
+            {m && <PeopleStrip metadata={m} />}
+            {/* Entries saved offline before person ids existed: names only. */}
+            {m && m.crew.length === 0 && m.creators.length > 0 && (
               <p className="text-muted">
                 {result.mediaType === 'tv' ? 'Created by ' : 'Directed by '}
                 {m.creators.join(', ')}
               </p>
             )}
-            {m && m.cast.length > 0 && (
+            {m && m.cast.length > 0 && m.cast.every((c) => !c.personId) && (
               <p className="text-muted">
                 With{' '}
                 {m.cast

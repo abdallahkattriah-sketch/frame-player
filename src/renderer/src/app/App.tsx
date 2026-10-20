@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { LibraryItem } from '@shared/contracts/library'
+import type { TmdbSearchResult } from '@shared/contracts/metadata'
+import { PeopleView } from '@renderer/features/people/PeopleView'
+import { PersonDialog } from '@renderer/features/people/PersonDialog'
+import { PeopleActionsContext, type PeopleActions } from '@renderer/features/people/people-actions'
+import { TmdbDetailsDialog } from '@renderer/features/metadata/TmdbDetailsDialog'
 import { AppShell } from '@renderer/components/shell/AppShell'
 import { MainCommandPalette } from './MainCommandPalette'
 import { useSettings } from './settings-context'
@@ -40,6 +45,20 @@ export function App() {
   const [subtitleItem, setSubtitleItem] = useState<LibraryItem | null>(null)
   const [showPalette, setShowPalette] = useState(false)
   const query = useDebounced(search.trim(), 200)
+  // Person profiles and title details opened from them, stacked: the last one is on top.
+  const [stack, setStack] = useState<
+    ({ key: number } & ({ personId: number } | { result: TmdbSearchResult }))[]
+  >([])
+  const peopleActions = useMemo<PeopleActions>(() => {
+    // Keeps the stack shallow; closing the top dialog returns to the one below.
+    const push = (entry: { personId: number } | { result: TmdbSearchResult }) =>
+      setStack((s) => [...s.slice(-5), { key: Date.now() + Math.random(), ...entry }])
+    return {
+      openPerson: (personId) => push({ personId }),
+      openTitle: (result) => push({ result }),
+    }
+  }, [])
+  const closeTop = (key: number) => setStack((s) => s.filter((e) => e.key !== key))
 
   const navigate = useCallback((id: ViewId) => {
     setActiveView(id)
@@ -71,7 +90,11 @@ export function App() {
     : -1
   const collection = collections[collectionIndex]
   const searchable =
-    activeView === 'movies' || activeView === 'shows' || activeView === 'all' || !!collection
+    activeView === 'movies' ||
+    activeView === 'shows' ||
+    activeView === 'all' ||
+    activeView === 'people' ||
+    !!collection
   // A deleted collection falls back to Home.
   const page: NavItemId | 'collection' = collection
     ? 'collection'
@@ -90,6 +113,8 @@ export function App() {
         return <AllMediaView search={query} />
       case 'history':
         return <HistoryView />
+      case 'people':
+        return <PeopleView search={query} />
       case 'settings':
         return <SettingsView onRunSetup={() => setSetupRequested(true)} />
       case 'home':
@@ -108,61 +133,78 @@ export function App() {
   })()
 
   return (
-    <MetadataActionsContext.Provider value={metadataActions}>
-      <AppShell
-        activeView={activeView}
-        onNavigate={navigate}
-        search={search}
-        onSearchChange={setSearch}
-        aside={
-          detailsItem && (
-            <DetailsPanel
-              key={detailsItem.fileId ?? detailsItem.historyKey}
-              item={detailsItem}
-              onClose={() => setDetailsItem(null)}
-            />
-          )
-        }
-      >
-        {query && view !== 'settings' ? (
-          // Searching: titles on TMDB above the matches in the library.
-          <div className="flex flex-col gap-6">
-            <TmdbSearchResults query={query} />
-            <div>{content}</div>
-          </div>
-        ) : (
-          // Each page fades up into place instead of appearing at once.
-          <div key={activeView} className="frame-enter h-full">
-            {content}
-          </div>
+    <PeopleActionsContext.Provider value={peopleActions}>
+      <MetadataActionsContext.Provider value={metadataActions}>
+        <AppShell
+          activeView={activeView}
+          onNavigate={navigate}
+          search={search}
+          onSearchChange={setSearch}
+          aside={
+            detailsItem && (
+              <DetailsPanel
+                key={detailsItem.fileId ?? detailsItem.historyKey}
+                item={detailsItem}
+                onClose={() => setDetailsItem(null)}
+              />
+            )
+          }
+        >
+          {query && view !== 'settings' && view !== 'people' ? (
+            // Searching: titles on TMDB above the matches in the library.
+            <div className="flex flex-col gap-6">
+              <TmdbSearchResults query={query} />
+              <div>{content}</div>
+            </div>
+          ) : (
+            // Each page fades up into place instead of appearing at once.
+            <div key={activeView} className="frame-enter h-full">
+              {content}
+            </div>
+          )}
+        </AppShell>
+        {subtitleItem?.fileId != null && (
+          <SubtitleSearchDialog
+            key={subtitleItem.fileId}
+            target={{ fileId: subtitleItem.fileId }}
+            label={subtitleItem.fileName}
+            isEpisode={subtitleItem.kind === 'episode'}
+            onClose={() => setSubtitleItem(null)}
+          />
         )}
-      </AppShell>
-      {subtitleItem?.fileId != null && (
-        <SubtitleSearchDialog
-          key={subtitleItem.fileId}
-          target={{ fileId: subtitleItem.fileId }}
-          label={subtitleItem.fileName}
-          isEpisode={subtitleItem.kind === 'episode'}
-          onClose={() => setSubtitleItem(null)}
-        />
-      )}
-      {showSetup && <SetupWizard onDone={() => setSetupRequested(false)} />}
-      {collectionItem?.fileId != null && (
-        <AddToCollectionDialog
-          target={{ label: displayTitle(collectionItem), fileId: collectionItem.fileId }}
-          onClose={() => setCollectionItem(null)}
-        />
-      )}
-      {showPalette && (
-        <MainCommandPalette onNavigate={navigate} onClose={() => setShowPalette(false)} />
-      )}
-      {matchRequest && (
-        <MatchDialog
-          key={JSON.stringify(matchRequest.target)}
-          request={matchRequest}
-          onClose={() => setMatchRequest(null)}
-        />
-      )}
-    </MetadataActionsContext.Provider>
+        {showSetup && <SetupWizard onDone={() => setSetupRequested(false)} />}
+        {collectionItem?.fileId != null && (
+          <AddToCollectionDialog
+            target={{ label: displayTitle(collectionItem), fileId: collectionItem.fileId }}
+            onClose={() => setCollectionItem(null)}
+          />
+        )}
+        {showPalette && (
+          <MainCommandPalette onNavigate={navigate} onClose={() => setShowPalette(false)} />
+        )}
+        {matchRequest && (
+          <MatchDialog
+            key={JSON.stringify(matchRequest.target)}
+            request={matchRequest}
+            onClose={() => setMatchRequest(null)}
+          />
+        )}
+        {stack.map((entry) =>
+          'personId' in entry ? (
+            <PersonDialog
+              key={entry.key}
+              personId={entry.personId}
+              onClose={() => closeTop(entry.key)}
+            />
+          ) : (
+            <TmdbDetailsDialog
+              key={entry.key}
+              result={entry.result}
+              onClose={() => closeTop(entry.key)}
+            />
+          ),
+        )}
+      </MetadataActionsContext.Provider>
+    </PeopleActionsContext.Provider>
   )
 }

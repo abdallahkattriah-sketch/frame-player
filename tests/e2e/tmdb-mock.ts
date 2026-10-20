@@ -73,10 +73,37 @@ const routes: Record<string, unknown> = {
     vote_average: 8.2,
     vote_count: 25000,
     credits: {
-      cast: [{ name: 'Keanu Reeves', character: 'Neo', order: 0 }],
-      crew: [{ name: 'Lana Wachowski', job: 'Director' }],
+      cast: [{ id: 6384, name: 'Keanu Reeves', character: 'Neo', order: 0 }],
+      crew: [{ id: 9340, name: 'Lana Wachowski', job: 'Director', department: 'Directing' }],
     },
     external_ids: { imdb_id: 'tt0133093' },
+  },
+  '/3/person/6384?append_to_response=combined_credits': {
+    id: 6384,
+    name: 'Keanu Reeves',
+    biography: 'Canadian actor.',
+    birthday: '1964-09-02',
+    known_for_department: 'Acting',
+    profile_path: '/keanu.png',
+    combined_credits: {
+      cast: [
+        {
+          id: 603,
+          media_type: 'movie',
+          title: 'The Matrix',
+          release_date: '1999-03-30',
+          character: 'Neo',
+        },
+        {
+          id: 7001,
+          media_type: 'movie',
+          title: 'Far Future',
+          release_date: '2099-01-01',
+          character: 'Lead',
+        },
+      ],
+      crew: [],
+    },
   },
   '/3/movie/438631?append_to_response=credits,external_ids': {
     id: 438631,
