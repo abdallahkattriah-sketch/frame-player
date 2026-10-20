@@ -10,6 +10,13 @@ const PNG = Buffer.from(
 )
 
 /** Responses shaped like TMDB v3 (developer.themoviedb.org), keyed by path + sorted query. */
+/** YYYY-MM-DD, `offset` days from today (local time). */
+function day(offset: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 const routes: Record<string, unknown> = {
   '/3/configuration': {
     images: {
@@ -101,9 +108,40 @@ const routes: Record<string, unknown> = {
           release_date: '2099-01-01',
           character: 'Lead',
         },
+        {
+          id: 7002,
+          media_type: 'movie',
+          title: 'Soon Movie',
+          release_date: day(10),
+          character: 'Hero',
+        },
+        {
+          id: 7003,
+          media_type: 'movie',
+          title: 'Fresh Movie',
+          release_date: day(-5),
+          character: 'Pilot',
+        },
       ],
       crew: [],
     },
+  },
+  // Radar: Egypt lists a cinema date for one title; the other has only US dates.
+  '/3/movie/7002/release_dates': {
+    results: [
+      { iso_3166_1: 'EG', release_dates: [{ type: 3, release_date: `${day(10)}T00:00:00.000Z` }] },
+    ],
+  },
+  '/3/movie/7003/release_dates': {
+    results: [
+      {
+        iso_3166_1: 'US',
+        release_dates: [
+          { type: 3, release_date: `${day(-5)}T00:00:00.000Z` },
+          { type: 4, release_date: `${day(20)}T00:00:00.000Z` },
+        ],
+      },
+    ],
   },
   '/3/movie/438631?append_to_response=credits,external_ids': {
     id: 438631,

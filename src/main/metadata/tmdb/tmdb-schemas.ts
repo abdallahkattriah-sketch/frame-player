@@ -192,3 +192,16 @@ export const personDetailsSchema = z.object({
     .nullish(),
 })
 export type TmdbPersonDetails = z.infer<typeof personDetailsSchema>
+
+/** /movie/{id}/release_dates: dated releases per country and type. */
+export const releaseDatesSchema = z.object({
+  results: z.array(
+    z.object({
+      iso_3166_1: z.string(),
+      release_dates: z.array(
+        z.object({ type: z.number().int(), release_date: z.string(), note: str }),
+      ),
+    }),
+  ),
+})
+export type TmdbReleaseDates = z.infer<typeof releaseDatesSchema>

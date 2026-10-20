@@ -60,6 +60,8 @@ import type { BookmarkService } from '../application/bookmark-service'
 import type { ThumbnailService } from '../media-engine/thumbnail-service'
 import { bookmarkEditSchema, bookmarkIdSchema } from '@shared/contracts/bookmarks'
 import type { PeopleRepository } from '../database/repositories/people-repository'
+import type { RadarService } from '../metadata/radar-service'
+import { radarRefreshSchema } from '@shared/contracts/radar'
 import {
   followPersonInputSchema,
   peopleSearchSchema,
@@ -80,6 +82,7 @@ export interface IpcDependencies {
   bookmarks: BookmarkService
   collections: CollectionRepository
   people: PeopleRepository
+  radar: RadarService
   storage: StorageService
   /** Main data folder (opened from Settings > Storage). */
   openPath: (path: string) => Promise<string>
@@ -525,6 +528,9 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
   })
   handle(IpcChannel.PeopleDetails, z.tuple([personIdSchema]), ([id]) =>
     deps.metadata.personDetails(id),
+  )
+  handle(IpcChannel.RadarGet, z.union([noArgs, z.tuple([radarRefreshSchema])]), ([refresh]) =>
+    deps.radar.get(refresh ?? false),
   )
   handle(IpcChannel.MetadataOpenTmdbPage, tmdbRefSchema, ([mediaType, tmdbId]) =>
     deps.openExternal(`https://www.themoviedb.org/${mediaType}/${tmdbId}`),

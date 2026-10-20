@@ -7,6 +7,7 @@ import {
   movieDetailsSchema,
   movieSearchSchema,
   personDetailsSchema,
+  releaseDatesSchema,
   seasonDetailsSchema,
   tvDetailsSchema,
   tvSearchSchema,
@@ -16,6 +17,7 @@ import {
   type TmdbMovieDetails,
   type TmdbMovieResult,
   type TmdbPersonDetails,
+  type TmdbReleaseDates,
   type TmdbSeasonDetails,
   type TmdbTvDetails,
   type TmdbTvResult,
@@ -129,6 +131,11 @@ export class TmdbClient {
       personDetailsSchema,
       signal,
     )
+  }
+
+  /** Release dates of a movie in every country TMDB knows, by release type. */
+  releaseDates(id: number, signal?: AbortSignal): Promise<TmdbReleaseDates> {
+    return this.get(`/movie/${id}/release_dates`, {}, releaseDatesSchema, signal, false)
   }
 
   /** Trailers, teasers, and clips; `localized: false` asks for videos in any language. */

@@ -11,6 +11,7 @@ import type {
   CollectionTitleInput,
 } from './collections'
 import type { FollowedPerson, FollowPersonInput, PersonDetails } from './people'
+import type { RadarResult } from './radar'
 import type { OpenMediaResult, PlayerCommand, PlayerState, ScreenshotResult } from './player'
 import type {
   AddFolderResult,
@@ -213,6 +214,13 @@ export interface FrameApi {
     details: (personId: number) => Promise<PersonDetails>
     /** Fires when the followed list or dismissals change. */
     onChanged: (listener: () => void) => () => void
+  }
+  radar: {
+    /**
+     * Movies of followed people near today, with Egyptian (or labeled fallback) theatrical and
+     * digital dates. Served from the last result when recent; `refresh` asks TMDB again.
+     */
+    get: (refresh?: boolean) => Promise<RadarResult>
   }
   /** Scene bookmarks of the video that is playing. */
   bookmarks: {

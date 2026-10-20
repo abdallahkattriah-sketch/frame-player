@@ -77,6 +77,7 @@ export const IpcChannel = {
   PeopleDismiss: 'people:dismiss',
   PeopleClearDismissed: 'people:clear-dismissed',
   PeopleDetails: 'people:details',
+  RadarGet: 'radar:get',
   SubtitleProviders: 'subtitles:providers',
   SubtitleValidateProvider: 'subtitles:validate-provider',
   SubtitleSearch: 'subtitles:search',

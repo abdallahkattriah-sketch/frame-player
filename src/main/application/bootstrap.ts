@@ -29,6 +29,7 @@ import { SettingsService } from './settings-service'
 import { StorageService } from './storage-service'
 import { CollectionRepository } from '../database/repositories/collection-repository'
 import { PeopleRepository } from '../database/repositories/people-repository'
+import { RadarService } from '../metadata/radar-service'
 import { BookmarkService } from './bookmark-service'
 import { BookmarkRepository } from '../database/repositories/bookmark-repository'
 import { mpvFrameExtractor, ThumbnailService } from '../media-engine/thumbnail-service'
@@ -50,6 +51,7 @@ export interface AppServices {
   bookmarks: BookmarkService
   collections: CollectionRepository
   people: PeopleRepository
+  radar: RadarService
   storage: StorageService
   startupStatus: StartupStatus
 }
@@ -137,14 +139,29 @@ export function bootstrapServices(
     getLanguage: () => settings.get().metadata.language,
     apiBase: overrides.tmdbApiBase,
   })
+  const metadataRepository = new MetadataRepository(db)
   const metadata = new MetadataService({
-    repository: new MetadataRepository(db),
+    repository: metadataRepository,
     tmdb,
     isEnabled: onlineMetadata,
     getLanguage: () => settings.get().metadata.language,
     resolveFile: (id) => libraryQuery.getFileForMatch(id),
     onChanged: events.onLibraryChanged,
     onStatus: events.onMetadataStatus,
+    warn: (message) => console.warn(message),
+  })
+  const people = new PeopleRepository(db)
+  const radar = new RadarService({
+    personDetails: (id, maxAgeMs) => metadata.personDetails(id, maxAgeMs),
+    releaseDates: (id) => tmdb.releaseDates(id),
+    listFollowed: () => people.list(),
+    cache: metadataRepository,
+    offlineReason: () =>
+      !onlineMetadata()
+        ? 'Online metadata lookups are turned off in Settings › Privacy.'
+        : !tmdb.configured
+          ? 'Add a TMDB token in Settings to see releases.'
+          : null,
     warn: (message) => console.warn(message),
   })
   let imageBase = overrides.tmdbImageBase
@@ -229,7 +246,8 @@ export function bootstrapServices(
     thumbnails,
     bookmarks,
     collections: new CollectionRepository(db),
-    people: new PeopleRepository(db),
+    people,
+    radar,
     storage: new StorageService({ paths, db, clearPreviews: () => thumbnails.clearPreviews() }),
     startupStatus: recoveredFrom
       ? { databaseRecovery: { backupPath: recoveredFrom.backupPath } }

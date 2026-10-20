@@ -1,6 +1,17 @@
-import { Clock, Film, Home, Library, Settings, Tv, Users, type LucideIcon } from 'lucide-react'
+import {
+  Clock,
+  Film,
+  Home,
+  Library,
+  Radar,
+  Settings,
+  Tv,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
 
-export type NavItemId = 'home' | 'movies' | 'shows' | 'all' | 'history' | 'people' | 'settings'
+export type NavItemId =
+  'home' | 'radar' | 'movies' | 'shows' | 'all' | 'history' | 'people' | 'settings'
 /** A fixed page or one of the user's collections. */
 export type ViewId = NavItemId | `collection-${number}`
 
@@ -14,6 +25,7 @@ export interface NavItem {
 
 export const primaryNavItems: readonly NavItem[] = [
   { id: 'home', label: 'Home', icon: Home },
+  { id: 'radar', label: 'Radar', icon: Radar },
   { id: 'movies', label: 'Movies', icon: Film },
   { id: 'shows', label: 'TV Shows', icon: Tv },
   { id: 'all', label: 'All Media', icon: Library },

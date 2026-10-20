@@ -135,6 +135,12 @@ const api: FrameApi = {
     details: (personId) => ipcRenderer.invoke(IpcChannel.PeopleDetails, personId),
     onChanged: (listener) => subscribe<null>(IpcChannel.PeopleChanged, () => listener()),
   },
+  radar: {
+    get: (refresh) =>
+      refresh === undefined
+        ? ipcRenderer.invoke(IpcChannel.RadarGet)
+        : ipcRenderer.invoke(IpcChannel.RadarGet, refresh),
+  },
   bookmarks: {
     list: () => ipcRenderer.invoke(IpcChannel.BookmarksList),
     add: () => ipcRenderer.invoke(IpcChannel.BookmarksAdd),

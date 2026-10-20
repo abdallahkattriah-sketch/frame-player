@@ -254,11 +254,14 @@ export class MetadataService {
     return fetched
   }
 
-  /** A person's profile and filmography, cached like search results. Adult titles are left out. */
-  async personDetails(personId: number): Promise<PersonDetails> {
+  /**
+   * A person's profile and filmography, cached like search results (Radar asks for fresher
+   * copies with `maxAgeMs`). Adult titles are left out.
+   */
+  async personDetails(personId: number, maxAgeMs = SEARCH_CACHE_MS): Promise<PersonDetails> {
     const key = `person:${personId}:${this.options.getLanguage()}`
     const notBefore = new Date(
-      (this.options.now?.() ?? new Date()).getTime() - SEARCH_CACHE_MS,
+      (this.options.now?.() ?? new Date()).getTime() - maxAgeMs,
     ).toISOString()
     const cached = this.options.repository.getCached(key, notBefore) as PersonDetails | undefined
     if (cached && typeof cached === 'object' && cached.personId === personId) return cached

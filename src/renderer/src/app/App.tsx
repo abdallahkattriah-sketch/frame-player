@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { LibraryItem } from '@shared/contracts/library'
 import type { TmdbSearchResult } from '@shared/contracts/metadata'
 import { PeopleView } from '@renderer/features/people/PeopleView'
+import { RadarView } from '@renderer/features/radar/RadarView'
 import { PersonDialog } from '@renderer/features/people/PersonDialog'
 import { PeopleActionsContext, type PeopleActions } from '@renderer/features/people/people-actions'
 import { TmdbDetailsDialog } from '@renderer/features/metadata/TmdbDetailsDialog'
@@ -62,7 +63,7 @@ export function App() {
 
   const navigate = useCallback((id: ViewId) => {
     setActiveView(id)
-    if (id === 'home' || id === 'history' || id === 'settings') setSearch('')
+    if (id === 'home' || id === 'radar' || id === 'history' || id === 'settings') setSearch('')
   }, [])
   const openPalette = useCallback(() => setShowPalette(true), [])
   const openSettings = useCallback(() => navigate('settings'), [navigate])
@@ -115,6 +116,8 @@ export function App() {
         return <HistoryView />
       case 'people':
         return <PeopleView search={query} />
+      case 'radar':
+        return <RadarView onOpenSettings={() => setActiveView('settings')} />
       case 'settings':
         return <SettingsView onRunSetup={() => setSetupRequested(true)} />
       case 'home':
