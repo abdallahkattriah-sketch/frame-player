@@ -36,6 +36,8 @@ export interface RadarServiceOptions {
   cache: CacheStore
   /** Online lookups allowed and a TMDB token saved; a reason when not. */
   offlineReason: () => string | null
+  /** Called with each freshly computed result (not with saved ones). */
+  onComputed?: (result: RadarResult) => void
   now?: () => Date
   warn?: (message: string) => void
 }
@@ -208,7 +210,13 @@ export class RadarService {
       followKey,
     }
     this.options.cache.putCached(RESULT_KEY, result, now.toISOString())
-    return this.publicResult(result, false, result.error)
+    const published = this.publicResult(result, false, result.error)
+    try {
+      this.options.onComputed?.(published)
+    } catch (error) {
+      this.options.warn?.(`radar: notifications: ${message(error)}`)
+    }
+    return published
   }
 
   private async releasesOf(movieId: number): Promise<CountryRelease[]> {

@@ -7,6 +7,7 @@ import {
   movieDetailsSchema,
   movieSearchSchema,
   personDetailsSchema,
+  popularPeopleSchema,
   releaseDatesSchema,
   seasonDetailsSchema,
   tvDetailsSchema,
@@ -17,6 +18,7 @@ import {
   type TmdbMovieDetails,
   type TmdbMovieResult,
   type TmdbPersonDetails,
+  type TmdbPopularPerson,
   type TmdbReleaseDates,
   type TmdbSeasonDetails,
   type TmdbTvDetails,
@@ -131,6 +133,10 @@ export class TmdbClient {
       personDetailsSchema,
       signal,
     )
+  }
+
+  async popularPeople(signal?: AbortSignal): Promise<TmdbPopularPerson[]> {
+    return (await this.get('/person/popular', {}, popularPeopleSchema, signal)).results
   }
 
   /** Release dates of a movie in every country TMDB knows, by release type. */

@@ -56,3 +56,22 @@ export const followPersonInputSchema = z
   .strict()
 
 export const peopleSearchSchema = z.string().max(200)
+
+/** A suggested person. `source` says whether the reason was worked out locally or is TMDB's. */
+export interface PersonRecommendation {
+  personId: number
+  name: string
+  profilePath: string | null
+  department: string | null
+  /** A few titles they are known for. */
+  knownFor: string[]
+  /** e.g. "Worked with Denis Villeneuve", "In 3 titles in your library", "Popular on TMDB". */
+  reason: string
+  source: 'local' | 'popular'
+}
+
+export interface PeopleRecommendations {
+  people: PersonRecommendation[]
+  /** Why TMDB's popular people are missing (offline, no token), if they are. */
+  popularUnavailable: string | null
+}

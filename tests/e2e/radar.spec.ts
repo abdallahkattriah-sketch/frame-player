@@ -63,6 +63,41 @@ test('Radar shows releases of followed people with Egypt dates, and popular movi
     await expect(digital).not.toContainText('Soon Movie')
     await expect(radar.getByTestId('radar-updated')).toBeVisible()
 
+    // Each new release is announced once: two cinema releases and one digital one.
+    const bell = page.getByRole('button', { name: /^Release notifications/ })
+    await expect(page.getByTestId('notification-count')).toHaveText('3')
+    await bell.click()
+    const panel = page.getByRole('dialog', { name: 'Release notifications' })
+    await expect(panel).toContainText('Soon Movie')
+    await expect(panel).toContainText('In cinemas in Egypt')
+    await expect(panel).toContainText('Digital release in US (no Egypt date yet)')
+    await panel.getByRole('button', { name: /^Unread Soon Movie/ }).click()
+    await expect(page.getByTestId('tmdb-details')).toBeVisible()
+    await page.getByTestId('tmdb-details').getByRole('button', { name: 'Close' }).click()
+    await expect(page.getByTestId('notification-count')).toHaveText('2')
+    await bell.click()
+    await panel.getByRole('button', { name: 'Mark all read' }).click()
+    await expect(page.getByTestId('notification-count')).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    // Refreshing finds nothing new, so nothing is announced again.
+    await radar.getByRole('button', { name: 'Refresh Radar' }).click()
+    await expect(radar.getByRole('button', { name: 'Refresh Radar' })).toBeEnabled()
+    await expect(page.getByTestId('notification-count')).toHaveCount(0)
+
+    // People to follow: followed people are left out; Not interested hides someone.
+    const suggestions = radar.getByTestId('people-to-follow')
+    await expect(suggestions).toContainText('Popular Person')
+    await expect(suggestions).toContainText('Popular on TMDB')
+    await expect(
+      suggestions.getByRole('button', { name: 'Not interested in Keanu Reeves' }),
+    ).toHaveCount(0)
+    // Worked out locally: the director of a movie with someone followed.
+    await expect(suggestions).toContainText('Lana Wachowski')
+    await expect(suggestions).toContainText('Worked with Keanu Reeves')
+    await suggestions.getByRole('button', { name: 'Not interested in Popular Person' }).click()
+    await expect(suggestions).not.toContainText('Popular Person')
+    await expect(suggestions).toContainText('Another Star')
+
     // Filters hide sections without refetching.
     await radar.getByRole('button', { name: 'Release type' }).click()
     await page.getByRole('option', { name: 'Digital' }).click()

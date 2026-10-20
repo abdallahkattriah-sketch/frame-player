@@ -25,6 +25,7 @@ import { TMDB_LISTS, TmdbNotConfiguredError, type TmdbClient } from './tmdb/tmdb
 import type {
   TmdbMovieDetails,
   TmdbPersonDetails,
+  TmdbPopularPerson,
   TmdbTvDetails,
   TmdbVideo,
 } from './tmdb/tmdb-schemas'
@@ -269,6 +270,20 @@ export class MetadataService {
     const person = fromPerson(await this.options.tmdb.personDetails(personId), this.nowIso())
     this.options.repository.putCached(key, person, this.nowIso())
     return person
+  }
+
+  /** TMDB's popular people today, cached for a day. */
+  async popularPeople(): Promise<TmdbPopularPerson[]> {
+    const key = `people-popular:${this.options.getLanguage()}`
+    const notBefore = new Date(
+      (this.options.now?.() ?? new Date()).getTime() - DAY_MS,
+    ).toISOString()
+    const cached = this.options.repository.getCached(key, notBefore)
+    if (Array.isArray(cached)) return cached as TmdbPopularPerson[]
+    this.assertOnline()
+    const people = await this.options.tmdb.popularPeople()
+    this.options.repository.putCached(key, people, this.nowIso())
+    return people
   }
 
   /** Candidates stored for a target, searching now if there are none. */

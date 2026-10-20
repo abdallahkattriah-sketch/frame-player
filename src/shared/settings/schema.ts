@@ -71,6 +71,8 @@ export const metadataSettingsSchema = z.object({
   browseTmdb: z.boolean(),
   /** Details windows start the trailer (muted) by themselves. */
   autoplayTrailers: z.boolean(),
+  /** Radar announces new releases of followed people (checked at startup and in Radar). */
+  radarNotifications: z.boolean(),
 })
 
 const languageCode = z.string().regex(/^[a-z]{2}(?:-[A-Z]{2})?$/)
@@ -133,6 +135,7 @@ export const defaultSettings: AppSettings = {
     searchTmdb: true,
     browseTmdb: true,
     autoplayTrailers: true,
+    radarNotifications: true,
   },
   subtitles: {
     preferredLanguages: ['en'],

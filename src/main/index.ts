@@ -28,6 +28,9 @@ const preloadPath = join(__dirname, '../preload/index.js')
 const rendererHtml = join(__dirname, '../renderer/index.html')
 
 let services: AppServices | undefined
+let radarStartupTimer: NodeJS.Timeout | undefined
+/** Leaves startup work (scans, identification) a head start. */
+const RADAR_STARTUP_DELAY_MS = 20_000
 let player: PlayerController | undefined
 let mainWindow: BrowserWindow | undefined
 
@@ -125,6 +128,7 @@ if (!app.requestSingleInstanceLock()) {
           onMetadataStatus: (status) => broadcast(IpcChannel.MetadataStatusChanged, status),
           onSubtitleStatus: (statuses) => broadcast(IpcChannel.SubtitleProvidersChanged, statuses),
           onBookmarksChanged: () => broadcast(IpcChannel.BookmarksChanged, null),
+          onRadarNotificationsChanged: () => broadcast(IpcChannel.RadarNotificationsChanged, null),
         },
         devOverrides(),
         {
@@ -193,6 +197,7 @@ if (!app.requestSingleInstanceLock()) {
       player,
       onLibraryChanged: notifyLibraryChanged,
       onPeopleChanged: () => broadcast(IpcChannel.PeopleChanged, null),
+      onRadarNotificationsChanged: () => broadcast(IpcChannel.RadarNotificationsChanged, null),
       onSettingsChanged: (settings) => {
         broadcast(IpcChannel.SettingsChanged, settings)
         if (mainWindow && !mainWindow.isDestroyed()) {
@@ -235,6 +240,16 @@ if (!app.requestSingleInstanceLock()) {
     }
     services.library.startWatchers()
 
+    // Radar looks for new releases of followed people once, shortly after startup (and again
+    // when Radar is opened). Nothing runs while Frame is closed.
+    radarStartupTimer = setTimeout(() => {
+      if (startedServices.settings.get().metadata.radarNotifications) {
+        void startedServices.radar
+          .get()
+          .catch((e: unknown) => console.warn(`radar: startup check failed: ${String(e)}`))
+      }
+    }, RADAR_STARTUP_DELAY_MS)
+
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createMainWindow()
     })
@@ -263,6 +278,7 @@ if (!app.requestSingleInstanceLock()) {
   })
 
   app.on('will-quit', () => {
+    clearTimeout(radarStartupTimer)
     player?.disposeNow()
     services?.db.close()
     services = undefined

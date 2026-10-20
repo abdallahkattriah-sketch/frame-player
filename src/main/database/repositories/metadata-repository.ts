@@ -271,6 +271,28 @@ export class MetadataRepository {
     }
   }
 
+  /** Cast and crew of every stored movie and show, for suggesting people to follow. */
+  peopleByTitle(): {
+    key: string
+    title: string
+    cast: CastMember[]
+    crew: CrewMember[]
+  }[] {
+    const rows = this.db
+      .prepare(
+        `SELECT media_type AS mediaType, tmdb_id AS tmdbId, title, cast_json AS "cast",
+                crew_json AS crew
+         FROM metadata_items`,
+      )
+      .all() as { mediaType: string; tmdbId: number; title: string; cast: string; crew: string }[]
+    return rows.map((r) => ({
+      key: `${r.mediaType}:${r.tmdbId}`,
+      title: r.title,
+      cast: parseJson<CastMember[]>(r.cast, []),
+      crew: parseJson<CrewMember[]>(r.crew, []),
+    }))
+  }
+
   saveEpisodes(tmdbId: number, episodes: readonly EpisodeMetadata[], fetchedAt: string): void {
     const insert = this.db.prepare(
       `INSERT OR REPLACE INTO metadata_episodes (tmdb_id, season, episode, name, overview, air_date,

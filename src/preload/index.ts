@@ -133,6 +133,7 @@ const api: FrameApi = {
     dismiss: (personId) => ipcRenderer.invoke(IpcChannel.PeopleDismiss, personId),
     clearDismissed: () => ipcRenderer.invoke(IpcChannel.PeopleClearDismissed),
     details: (personId) => ipcRenderer.invoke(IpcChannel.PeopleDetails, personId),
+    recommendations: () => ipcRenderer.invoke(IpcChannel.PeopleRecommendations),
     onChanged: (listener) => subscribe<null>(IpcChannel.PeopleChanged, () => listener()),
   },
   radar: {
@@ -140,6 +141,12 @@ const api: FrameApi = {
       refresh === undefined
         ? ipcRenderer.invoke(IpcChannel.RadarGet)
         : ipcRenderer.invoke(IpcChannel.RadarGet, refresh),
+    notifications: () => ipcRenderer.invoke(IpcChannel.RadarNotifications),
+    markRead: (movieId, kind) => ipcRenderer.invoke(IpcChannel.RadarMarkRead, movieId, kind),
+    markAllRead: () => ipcRenderer.invoke(IpcChannel.RadarMarkAllRead),
+    dismiss: (movieId, kind) => ipcRenderer.invoke(IpcChannel.RadarDismiss, movieId, kind),
+    onNotificationsChanged: (listener) =>
+      subscribe<null>(IpcChannel.RadarNotificationsChanged, () => listener()),
   },
   bookmarks: {
     list: () => ipcRenderer.invoke(IpcChannel.BookmarksList),

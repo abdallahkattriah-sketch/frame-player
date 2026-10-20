@@ -10,8 +10,13 @@ import type {
   CollectionTitle,
   CollectionTitleInput,
 } from './collections'
-import type { FollowedPerson, FollowPersonInput, PersonDetails } from './people'
-import type { RadarResult } from './radar'
+import type {
+  FollowedPerson,
+  FollowPersonInput,
+  PeopleRecommendations,
+  PersonDetails,
+} from './people'
+import type { RadarNotification, RadarResult, ReleaseKind } from './radar'
 import type { OpenMediaResult, PlayerCommand, PlayerState, ScreenshotResult } from './player'
 import type {
   AddFolderResult,
@@ -212,6 +217,8 @@ export interface FrameApi {
     clearDismissed: () => Promise<number>
     /** Profile and filmography from TMDB (cached for a week). */
     details: (personId: number) => Promise<PersonDetails>
+    /** People to follow: worked out from the library and follows, plus TMDB's popular people. */
+    recommendations: () => Promise<PeopleRecommendations>
     /** Fires when the followed list or dismissals change. */
     onChanged: (listener: () => void) => () => void
   }
@@ -221,6 +228,12 @@ export interface FrameApi {
      * digital dates. Served from the last result when recent; `refresh` asks TMDB again.
      */
     get: (refresh?: boolean) => Promise<RadarResult>
+    /** New releases of followed people, each announced once; newest first. */
+    notifications: () => Promise<{ items: RadarNotification[]; unread: number }>
+    markRead: (movieId: number, kind: ReleaseKind) => Promise<void>
+    markAllRead: () => Promise<void>
+    dismiss: (movieId: number, kind: ReleaseKind) => Promise<void>
+    onNotificationsChanged: (listener: () => void) => () => void
   }
   /** Scene bookmarks of the video that is playing. */
   bookmarks: {

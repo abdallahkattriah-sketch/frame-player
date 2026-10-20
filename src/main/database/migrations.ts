@@ -272,6 +272,19 @@ export const migrations: readonly Migration[] = [
       ) STRICT;
     `,
   },
+  {
+    version: 9,
+    name: 'radar-notifications',
+    sql: `
+      -- What a release notification shows, kept so it still reads right offline.
+      ALTER TABLE radar_seen ADD COLUMN title TEXT;
+      ALTER TABLE radar_seen ADD COLUMN poster_path TEXT;
+      ALTER TABLE radar_seen ADD COLUMN release_date TEXT;
+      ALTER TABLE radar_seen ADD COLUMN country TEXT;
+      ALTER TABLE radar_seen ADD COLUMN people_json TEXT NOT NULL DEFAULT '[]';
+      CREATE INDEX radar_seen_recent ON radar_seen (first_seen_at);
+    `,
+  },
 ]
 
 export const latestSchemaVersion = migrations.reduce((max, m) => Math.max(max, m.version), 0)

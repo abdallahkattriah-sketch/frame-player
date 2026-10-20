@@ -21,6 +21,7 @@ const pushChannels = new Set<string>([
   IpcChannel.SubtitleProvidersChanged,
   IpcChannel.BookmarksChanged,
   IpcChannel.PeopleChanged,
+  IpcChannel.RadarNotificationsChanged,
   IpcChannel.SettingsChanged,
   IpcChannel.AppNavigate,
 ])

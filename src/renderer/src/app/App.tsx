@@ -3,6 +3,7 @@ import type { LibraryItem } from '@shared/contracts/library'
 import type { TmdbSearchResult } from '@shared/contracts/metadata'
 import { PeopleView } from '@renderer/features/people/PeopleView'
 import { RadarView } from '@renderer/features/radar/RadarView'
+import { RadarNotifications } from '@renderer/features/radar/RadarNotifications'
 import { PersonDialog } from '@renderer/features/people/PersonDialog'
 import { PeopleActionsContext, type PeopleActions } from '@renderer/features/people/people-actions'
 import { TmdbDetailsDialog } from '@renderer/features/metadata/TmdbDetailsDialog'
@@ -143,6 +144,7 @@ export function App() {
           onNavigate={navigate}
           search={search}
           onSearchChange={setSearch}
+          toolbarActions={<RadarNotifications />}
           aside={
             detailsItem && (
               <DetailsPanel

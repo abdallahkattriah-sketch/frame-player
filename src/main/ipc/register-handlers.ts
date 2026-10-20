@@ -61,7 +61,9 @@ import type { ThumbnailService } from '../media-engine/thumbnail-service'
 import { bookmarkEditSchema, bookmarkIdSchema } from '@shared/contracts/bookmarks'
 import type { PeopleRepository } from '../database/repositories/people-repository'
 import type { RadarService } from '../metadata/radar-service'
-import { radarRefreshSchema } from '@shared/contracts/radar'
+import { radarNotificationRefSchema, radarRefreshSchema } from '@shared/contracts/radar'
+import type { RadarRepository } from '../database/repositories/radar-repository'
+import type { PeopleRecommendations } from '@shared/contracts/people'
 import {
   followPersonInputSchema,
   peopleSearchSchema,
@@ -83,6 +85,8 @@ export interface IpcDependencies {
   collections: CollectionRepository
   people: PeopleRepository
   radar: RadarService
+  radarNotifications: RadarRepository
+  peopleSuggestions: { get: () => Promise<PeopleRecommendations> }
   storage: StorageService
   /** Main data folder (opened from Settings > Storage). */
   openPath: (path: string) => Promise<string>
@@ -90,6 +94,7 @@ export interface IpcDependencies {
   openExternal: (url: string) => Promise<void>
   onLibraryChanged: () => void
   onPeopleChanged: () => void
+  onRadarNotificationsChanged: () => void
   onSettingsChanged: (settings: AppSettings) => void
   showMainView: (view: 'settings') => void
 }
@@ -532,6 +537,20 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
   handle(IpcChannel.RadarGet, z.union([noArgs, z.tuple([radarRefreshSchema])]), ([refresh]) =>
     deps.radar.get(refresh ?? false),
   )
+  handle(IpcChannel.PeopleRecommendations, noArgs, () => deps.peopleSuggestions.get())
+  handle(IpcChannel.RadarNotifications, noArgs, () => ({
+    items: deps.radarNotifications.list(),
+    unread: deps.radarNotifications.unreadCount(),
+  }))
+  handle(IpcChannel.RadarMarkRead, radarNotificationRefSchema, ([movieId, kind]) => {
+    if (deps.radarNotifications.markRead(movieId, kind)) deps.onRadarNotificationsChanged()
+  })
+  handle(IpcChannel.RadarMarkAllRead, noArgs, () => {
+    if (deps.radarNotifications.markAllRead() > 0) deps.onRadarNotificationsChanged()
+  })
+  handle(IpcChannel.RadarDismiss, radarNotificationRefSchema, ([movieId, kind]) => {
+    if (deps.radarNotifications.dismiss(movieId, kind)) deps.onRadarNotificationsChanged()
+  })
   handle(IpcChannel.MetadataOpenTmdbPage, tmdbRefSchema, ([mediaType, tmdbId]) =>
     deps.openExternal(`https://www.themoviedb.org/${mediaType}/${tmdbId}`),
   )

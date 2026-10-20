@@ -30,6 +30,11 @@ import { StorageService } from './storage-service'
 import { CollectionRepository } from '../database/repositories/collection-repository'
 import { PeopleRepository } from '../database/repositories/people-repository'
 import { RadarService } from '../metadata/radar-service'
+import { RadarRepository } from '../database/repositories/radar-repository'
+import { recommendPeople } from '../metadata/people-recommendations'
+import type { TmdbPopularPerson } from '../metadata/tmdb/tmdb-schemas'
+import { notableReleases } from '@shared/contracts/radar'
+import type { PeopleRecommendations } from '@shared/contracts/people'
 import { BookmarkService } from './bookmark-service'
 import { BookmarkRepository } from '../database/repositories/bookmark-repository'
 import { mpvFrameExtractor, ThumbnailService } from '../media-engine/thumbnail-service'
@@ -52,6 +57,8 @@ export interface AppServices {
   collections: CollectionRepository
   people: PeopleRepository
   radar: RadarService
+  radarNotifications: RadarRepository
+  peopleSuggestions: { get: () => Promise<PeopleRecommendations> }
   storage: StorageService
   startupStatus: StartupStatus
 }
@@ -63,6 +70,7 @@ export interface BootstrapEvents {
   onMetadataStatus: (status: MetadataStatus) => void
   onSubtitleStatus?: (statuses: ProviderStatus[]) => void
   onBookmarksChanged?: () => void
+  onRadarNotificationsChanged?: () => void
 }
 
 /** Development/test-only endpoints (e.g. local mock servers). Ignored in packaged builds. */
@@ -151,7 +159,14 @@ export function bootstrapServices(
     warn: (message) => console.warn(message),
   })
   const people = new PeopleRepository(db)
+  const radarNotifications = new RadarRepository(db)
   const radar = new RadarService({
+    onComputed: (result) => {
+      if (!settings.get().metadata.radarNotifications) return
+      if (radarNotifications.record(notableReleases(result.movies, new Date())) > 0) {
+        events.onRadarNotificationsChanged?.()
+      }
+    },
     personDetails: (id, maxAgeMs) => metadata.personDetails(id, maxAgeMs),
     releaseDates: (id) => tmdb.releaseDates(id),
     listFollowed: () => people.list(),
@@ -164,6 +179,28 @@ export function bootstrapServices(
           : null,
     warn: (message) => console.warn(message),
   })
+  const peopleSuggestions = {
+    /** Local suggestions always; TMDB's popular people when online. */
+    async get(): Promise<PeopleRecommendations> {
+      let popular: TmdbPopularPerson[] = []
+      let popularUnavailable: string | null = null
+      try {
+        popular = await metadata.popularPeople()
+      } catch (error) {
+        popularUnavailable = error instanceof Error ? error.message : String(error)
+      }
+      return {
+        people: recommendPeople({
+          titles: metadataRepository.peopleByTitle(),
+          libraryKeys: metadataRepository.matchedTmdbKeys(),
+          followed: people.list(),
+          dismissed: people.dismissedIds(),
+          popular,
+        }),
+        popularUnavailable,
+      }
+    },
+  }
   let imageBase = overrides.tmdbImageBase
   const artwork = new ArtworkCache({
     dir: paths.artwork,
@@ -248,6 +285,8 @@ export function bootstrapServices(
     collections: new CollectionRepository(db),
     people,
     radar,
+    radarNotifications,
+    peopleSuggestions,
     storage: new StorageService({ paths, db, clearPreviews: () => thumbnails.clearPreviews() }),
     startupStatus: recoveredFrom
       ? { databaseRecovery: { backupPath: recoveredFrom.backupPath } }

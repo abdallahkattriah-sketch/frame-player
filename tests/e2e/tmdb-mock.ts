@@ -126,6 +126,18 @@ const routes: Record<string, unknown> = {
       crew: [],
     },
   },
+  '/3/person/popular': {
+    results: [
+      { id: 6384, name: 'Keanu Reeves', known_for_department: 'Acting' },
+      {
+        id: 31,
+        name: 'Popular Person',
+        known_for_department: 'Acting',
+        known_for: [{ title: 'Big Hit' }],
+      },
+      { id: 32, name: 'Another Star', known_for_department: 'Directing' },
+    ],
+  },
   // Radar: Egypt lists a cinema date for one title; the other has only US dates.
   '/3/movie/7002/release_dates': {
     results: [

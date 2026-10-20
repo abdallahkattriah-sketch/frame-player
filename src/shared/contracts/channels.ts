@@ -78,6 +78,11 @@ export const IpcChannel = {
   PeopleClearDismissed: 'people:clear-dismissed',
   PeopleDetails: 'people:details',
   RadarGet: 'radar:get',
+  RadarNotifications: 'radar:notifications',
+  RadarMarkRead: 'radar:mark-read',
+  RadarMarkAllRead: 'radar:mark-all-read',
+  RadarDismiss: 'radar:dismiss',
+  PeopleRecommendations: 'people:recommendations',
   SubtitleProviders: 'subtitles:providers',
   SubtitleValidateProvider: 'subtitles:validate-provider',
   SubtitleSearch: 'subtitles:search',
@@ -95,6 +100,7 @@ export const IpcChannel = {
   SubtitleProvidersChanged: 'subtitles:providers-changed',
   BookmarksChanged: 'bookmarks:changed',
   PeopleChanged: 'people:changed',
+  RadarNotificationsChanged: 'radar:notifications-changed',
 } as const
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel]

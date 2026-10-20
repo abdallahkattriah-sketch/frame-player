@@ -249,6 +249,18 @@ export function MetadataSection() {
           />
           Play trailers (muted) when opening details (trailers stream from YouTube)
         </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={settings?.metadata.radarNotifications ?? true}
+            onChange={(e) =>
+              void update({ metadata: { radarNotifications: e.currentTarget.checked } })
+            }
+            className="accent-[var(--frame-accent)]"
+          />
+          Notify me about new releases of people I follow (checked when Frame starts and when Radar
+          opens, never in the background)
+        </label>
         <button
           type="button"
           disabled={!configured || !enabled || status?.identifying}

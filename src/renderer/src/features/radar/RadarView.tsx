@@ -13,6 +13,7 @@ import { DiscoverHint, DiscoverRows, useBrowseState } from '@renderer/features/d
 import { formatDay } from '@renderer/features/people/PersonDialog'
 import { usePeopleActions } from '@renderer/features/people/people-actions'
 import { useFollowedPeople } from '@renderer/features/people/use-people'
+import { PeopleToFollow } from '@renderer/features/people/PeopleToFollow'
 
 function errorText(e: unknown) {
   return e instanceof Error
@@ -224,6 +225,8 @@ export function RadarView({ onOpenSettings }: { onOpenSettings: () => void }) {
           ]}
         />
       )}
+
+      <PeopleToFollow />
     </div>
   )
 }

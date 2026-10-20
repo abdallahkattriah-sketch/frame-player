@@ -205,3 +205,18 @@ export const releaseDatesSchema = z.object({
   ),
 })
 export type TmdbReleaseDates = z.infer<typeof releaseDatesSchema>
+
+/** /person/popular. */
+export const popularPeopleSchema = z.object({
+  results: z.array(
+    z.object({
+      id: z.number().int(),
+      name: z.string(),
+      profile_path: str,
+      known_for_department: str,
+      adult: z.boolean().nullish(),
+      known_for: z.array(z.object({ title: str, name: str })).nullish(),
+    }),
+  ),
+})
+export type TmdbPopularPerson = z.infer<typeof popularPeopleSchema>['results'][number]

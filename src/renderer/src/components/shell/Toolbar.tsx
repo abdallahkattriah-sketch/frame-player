@@ -1,11 +1,13 @@
+import type { ReactNode } from 'react'
 import { Search, X } from 'lucide-react'
 
 interface ToolbarProps {
   search: string
   onSearchChange: (value: string) => void
+  actions?: ReactNode
 }
 
-export function Toolbar({ search, onSearchChange }: ToolbarProps) {
+export function Toolbar({ search, onSearchChange, actions }: ToolbarProps) {
   return (
     <header
       className="app-drag flex h-[var(--frame-toolbar-height)] shrink-0 items-center gap-3 border-b border-border pl-5"
@@ -37,6 +39,7 @@ export function Toolbar({ search, onSearchChange }: ToolbarProps) {
           </button>
         )}
       </label>
+      {actions && <div className="ml-auto flex items-center gap-1">{actions}</div>}
     </header>
   )
 }

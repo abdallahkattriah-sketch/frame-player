@@ -182,3 +182,56 @@ export function radarSections(
 }
 
 export const radarRefreshSchema = z.boolean()
+
+/** A release announced once in the notification list. */
+export interface RadarNotification {
+  tmdbMovieId: number
+  kind: ReleaseKind
+  title: string
+  posterPath: string | null
+  date: string
+  /** Country of `date`; "EG" for Egypt. */
+  country: string
+  /** Followed people on the title. */
+  people: string[]
+  firstSeenAt: string
+  read: boolean
+}
+
+export type RadarNotificationInput = Omit<RadarNotification, 'firstSeenAt' | 'read'>
+
+/** Days around today in which a dated release is worth a notification. */
+const NOTIFY_AHEAD_DAYS = 90
+const NOTIFY_RECENT_DAYS = 14
+
+/** Theatrical and digital releases near today, one per title and kind, for notifications. */
+export function notableReleases(
+  movies: readonly RadarMovie[],
+  now: Date,
+): RadarNotificationInput[] {
+  const today = localDay(now)
+  const out: RadarNotificationInput[] = []
+  const seen = new Set<string>()
+  for (const movie of movies) {
+    for (const kind of ['theatrical', 'digital'] as const) {
+      const date = movie[kind]
+      if (!date || seen.has(`${movie.tmdbId}:${kind}`)) continue
+      const days = daysBetween(today, date.date)
+      if (days > NOTIFY_AHEAD_DAYS || -days > NOTIFY_RECENT_DAYS) continue
+      seen.add(`${movie.tmdbId}:${kind}`)
+      out.push({
+        tmdbMovieId: movie.tmdbId,
+        kind,
+        title: movie.title,
+        posterPath: movie.posterPath,
+        date: date.date,
+        country: date.country,
+        people: movie.people.map((p) => p.name),
+      })
+    }
+  }
+  return out
+}
+
+export const releaseKindSchema = z.enum(['theatrical', 'digital'])
+export const radarNotificationRefSchema = z.tuple([z.number().int().positive(), releaseKindSchema])
