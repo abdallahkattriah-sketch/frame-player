@@ -73,9 +73,19 @@ const companies = z.array(z.object({ name: z.string() })).nullish()
 const credits = z
   .object({
     cast: z
-      .array(z.object({ name: z.string(), character: str, profile_path: str, order: num }))
+      .array(
+        z.object({
+          id: num,
+          name: z.string(),
+          character: str,
+          profile_path: str,
+          order: num,
+        }),
+      )
       .nullish(),
-    crew: z.array(z.object({ name: z.string(), job: str })).nullish(),
+    crew: z
+      .array(z.object({ id: num, name: z.string(), job: str, department: str, profile_path: str }))
+      .nullish(),
   })
   .nullish()
 
@@ -112,7 +122,7 @@ export const tvDetailsSchema = z.object({
   vote_average: num,
   vote_count: num,
   original_language: str,
-  created_by: z.array(z.object({ name: z.string() })).nullish(),
+  created_by: z.array(z.object({ id: num, name: z.string(), profile_path: str })).nullish(),
   networks: companies,
   credits,
   external_ids: z.object({ imdb_id: str, tvdb_id: num }).nullish(),
@@ -149,3 +159,36 @@ export const videosSchema = z.object({
   ),
 })
 export type TmdbVideo = z.infer<typeof videosSchema>['results'][number]
+
+const personCreditBase = {
+  id: z.number().int(),
+  media_type: z.string(),
+  title: str,
+  name: str,
+  release_date: str,
+  first_air_date: str,
+  poster_path: str,
+  vote_count: num,
+  popularity: num,
+  adult: z.boolean().nullish(),
+}
+
+/** /person/{id} with append_to_response=combined_credits. */
+export const personDetailsSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  biography: str,
+  birthday: str,
+  deathday: str,
+  place_of_birth: str,
+  profile_path: str,
+  known_for_department: str,
+  adult: z.boolean().nullish(),
+  combined_credits: z
+    .object({
+      cast: z.array(z.object({ ...personCreditBase, character: str })).nullish(),
+      crew: z.array(z.object({ ...personCreditBase, job: str, department: str })).nullish(),
+    })
+    .nullish(),
+})
+export type TmdbPersonDetails = z.infer<typeof personDetailsSchema>

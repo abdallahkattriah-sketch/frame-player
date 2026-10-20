@@ -239,6 +239,39 @@ export const migrations: readonly Migration[] = [
       CREATE INDEX collection_titles_tmdb ON collection_titles (media_type, tmdb_id);
     `,
   },
+  {
+    version: 8,
+    name: 'people-radar',
+    sql: `
+      -- Directors, writers, producers, and creators with their TMDB person ids.
+      ALTER TABLE metadata_items ADD COLUMN crew_json TEXT NOT NULL DEFAULT '[]';
+
+      -- People the user follows, by TMDB person id. Name and photo are kept for offline use.
+      CREATE TABLE followed_people (
+        tmdb_person_id INTEGER PRIMARY KEY CHECK (tmdb_person_id > 0),
+        name           TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 500),
+        profile_path   TEXT,
+        department     TEXT,
+        followed_at    TEXT NOT NULL
+      ) STRICT;
+
+      -- Recommendations the user chose "Not interested" for.
+      CREATE TABLE dismissed_people (
+        tmdb_person_id INTEGER PRIMARY KEY CHECK (tmdb_person_id > 0),
+        dismissed_at   TEXT NOT NULL
+      ) STRICT;
+
+      -- Releases already announced to the user, so a notification is shown only once.
+      CREATE TABLE radar_seen (
+        tmdb_movie_id INTEGER NOT NULL CHECK (tmdb_movie_id > 0),
+        release_kind  TEXT NOT NULL CHECK (release_kind IN ('theatrical', 'digital')),
+        first_seen_at TEXT NOT NULL,
+        read_at       TEXT,
+        dismissed_at  TEXT,
+        PRIMARY KEY (tmdb_movie_id, release_kind)
+      ) STRICT;
+    `,
+  },
 ]
 
 export const latestSchemaVersion = migrations.reduce((max, m) => Math.max(max, m.version), 0)

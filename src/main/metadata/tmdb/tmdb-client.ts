@@ -6,6 +6,7 @@ import {
   listSchema,
   movieDetailsSchema,
   movieSearchSchema,
+  personDetailsSchema,
   seasonDetailsSchema,
   tvDetailsSchema,
   tvSearchSchema,
@@ -14,6 +15,7 @@ import {
   type TmdbListItem,
   type TmdbMovieDetails,
   type TmdbMovieResult,
+  type TmdbPersonDetails,
   type TmdbSeasonDetails,
   type TmdbTvDetails,
   type TmdbTvResult,
@@ -115,6 +117,16 @@ export class TmdbClient {
       `/tv/${id}`,
       { append_to_response: 'credits,external_ids' },
       tvDetailsSchema,
+      signal,
+    )
+  }
+
+  /** A person's biography and every movie and show they worked on. */
+  personDetails(id: number, signal?: AbortSignal): Promise<TmdbPersonDetails> {
+    return this.get(
+      `/person/${id}`,
+      { append_to_response: 'combined_credits' },
+      personDetailsSchema,
       signal,
     )
   }

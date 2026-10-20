@@ -2,6 +2,7 @@ import type {
   TmdbSearchResult,
   TmdbListId,
   Trailer,
+  CrewMember,
   EpisodeMetadata,
   ItemMetadata,
   MatchCandidate,
@@ -12,6 +13,7 @@ import type {
   MetadataStatus,
   TokenTestResult,
 } from '@shared/contracts/metadata'
+import type { PersonCredit, PersonDetails } from '@shared/contracts/people'
 import type {
   MetadataRepository,
   PendingTarget,
@@ -20,7 +22,12 @@ import type {
 import { HttpError } from '../network/http-client'
 import { rankCandidates, yearOf, type RawCandidate } from './matching'
 import { TMDB_LISTS, TmdbNotConfiguredError, type TmdbClient } from './tmdb/tmdb-client'
-import type { TmdbMovieDetails, TmdbTvDetails, TmdbVideo } from './tmdb/tmdb-schemas'
+import type {
+  TmdbMovieDetails,
+  TmdbPersonDetails,
+  TmdbTvDetails,
+  TmdbVideo,
+} from './tmdb/tmdb-schemas'
 
 /** YouTube video ids are 11 characters; anything else is not embedded. */
 const YOUTUBE_KEY = /^[A-Za-z0-9_-]{11}$/
@@ -231,12 +238,34 @@ export class MetadataService {
   async details(mediaType: MetadataMediaType, tmdbId: number): Promise<MediaMetadata> {
     const stored = this.options.repository.getMetadata(mediaType, tmdbId)
     const now = (this.options.now?.() ?? new Date()).getTime()
-    if (stored && now - Date.parse(stored.fetchedAt) < REFRESH_AGE_MS) return stored
-    this.assertOnline()
-    await this.fetchAndStore(mediaType, tmdbId, [])
+    const fresh = !!stored && now - Date.parse(stored.fetchedAt) < REFRESH_AGE_MS
+    // Entries stored before people could be followed lack person ids: refetch them when possible.
+    const lacksPeople = !!stored && stored.cast.length > 0 && stored.cast.every((c) => !c.personId)
+    if (stored && fresh && !lacksPeople) return stored
+    try {
+      this.assertOnline()
+      await this.fetchAndStore(mediaType, tmdbId, [])
+    } catch (error) {
+      if (stored && fresh) return stored
+      throw error
+    }
     const fetched = this.options.repository.getMetadata(mediaType, tmdbId)
     if (!fetched) throw new Error('TMDB returned no details for this title.')
     return fetched
+  }
+
+  /** A person's profile and filmography, cached like search results. Adult titles are left out. */
+  async personDetails(personId: number): Promise<PersonDetails> {
+    const key = `person:${personId}:${this.options.getLanguage()}`
+    const notBefore = new Date(
+      (this.options.now?.() ?? new Date()).getTime() - SEARCH_CACHE_MS,
+    ).toISOString()
+    const cached = this.options.repository.getCached(key, notBefore) as PersonDetails | undefined
+    if (cached && typeof cached === 'object' && cached.personId === personId) return cached
+    this.assertOnline()
+    const person = fromPerson(await this.options.tmdb.personDetails(personId), this.nowIso())
+    this.options.repository.putCached(key, person, this.nowIso())
+    return person
   }
 
   /** Candidates stored for a target, searching now if there are none. */
@@ -570,10 +599,90 @@ function cast(details: TmdbMovieDetails | TmdbTvDetails) {
     .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
     .slice(0, 12)
     .map((c) => ({
+      personId: c.id ?? null,
       name: c.name,
       character: c.character ?? null,
       profilePath: c.profile_path ?? null,
     }))
+}
+
+/** Crew jobs worth following someone for. */
+const KEY_JOBS = new Set([
+  'Director',
+  'Screenplay',
+  'Writer',
+  'Story',
+  'Novel',
+  'Producer',
+  'Director of Photography',
+  'Original Music Composer',
+])
+
+function crew(details: TmdbMovieDetails | TmdbTvDetails): CrewMember[] {
+  const seen = new Set<string>()
+  const people: CrewMember[] = []
+  const add = (
+    id: number | null | undefined,
+    name: string,
+    job: string,
+    profile?: string | null,
+  ) => {
+    if (!id || seen.has(`${id}:${job}`)) return
+    seen.add(`${id}:${job}`)
+    people.push({ personId: id, name, job, profilePath: profile ?? null })
+  }
+  if ('created_by' in details) {
+    for (const c of details.created_by ?? []) add(c.id, c.name, 'Creator', c.profile_path)
+  }
+  for (const c of details.credits?.crew ?? []) {
+    if (c.job && KEY_JOBS.has(c.job)) add(c.id, c.name, c.job, c.profile_path)
+  }
+  return people.slice(0, 20)
+}
+
+export function fromPerson(p: TmdbPersonDetails, fetchedAt: string): PersonDetails {
+  const credits: PersonCredit[] = []
+  const toCredit = (
+    c: NonNullable<NonNullable<TmdbPersonDetails['combined_credits']>['cast']>[number],
+    department: string,
+    role: string | null,
+  ): PersonCredit | null => {
+    const title = c.title ?? c.name
+    if ((c.media_type !== 'movie' && c.media_type !== 'tv') || !title || c.adult) return null
+    const releaseDate = (c.media_type === 'movie' ? c.release_date : c.first_air_date) || null
+    return {
+      mediaType: c.media_type,
+      tmdbId: c.id,
+      title,
+      releaseDate,
+      year: yearOf(releaseDate),
+      posterPath: c.poster_path ?? null,
+      department,
+      role,
+      voteCount: c.vote_count ?? null,
+      popularity: c.popularity ?? null,
+    }
+  }
+  for (const c of p.combined_credits?.cast ?? []) {
+    const credit = toCredit(c, 'cast', c.character || null)
+    if (credit) credits.push(credit)
+  }
+  for (const c of p.combined_credits?.crew ?? []) {
+    const credit = toCredit(c, c.department || 'Crew', c.job || null)
+    if (credit) credits.push(credit)
+  }
+  return {
+    personId: p.id,
+    name: p.name,
+    biography: p.biography?.trim() || null,
+    birthday: p.birthday || null,
+    deathday: p.deathday || null,
+    placeOfBirth: p.place_of_birth || null,
+    profilePath: p.profile_path ?? null,
+    department: p.known_for_department || null,
+    credits,
+    fetchedAt,
+  }
 }
 
 export function fromMovie(d: TmdbMovieDetails, fetchedAt: string): MediaMetadata {
@@ -596,6 +705,7 @@ export function fromMovie(d: TmdbMovieDetails, fetchedAt: string): MediaMetadata
     tvdbId: null,
     cast: cast(d),
     creators: (d.credits?.crew ?? []).filter((c) => c.job === 'Director').map((c) => c.name),
+    crew: crew(d),
     production: names(d.production_companies, 5),
     fetchedAt,
   }
@@ -621,6 +731,7 @@ export function fromTv(d: TmdbTvDetails, fetchedAt: string): MediaMetadata {
     tvdbId: d.external_ids?.tvdb_id ?? null,
     cast: cast(d),
     creators: names(d.created_by),
+    crew: crew(d),
     production: names(d.networks, 5),
     fetchedAt,
   }

@@ -10,6 +10,7 @@ import type {
   CollectionTitle,
   CollectionTitleInput,
 } from './collections'
+import type { FollowedPerson, FollowPersonInput, PersonDetails } from './people'
 import type { OpenMediaResult, PlayerCommand, PlayerState, ScreenshotResult } from './player'
 import type {
   AddFolderResult,
@@ -195,6 +196,23 @@ export interface FrameApi {
     /** Opens the title's page on themoviedb.org in the default browser. */
     openTmdbPage: (mediaType: MetadataMediaType, tmdbId: number) => Promise<void>
     onStatus: (listener: (status: MetadataStatus) => void) => () => void
+  }
+  /** Actors, directors, and other people the user follows, by TMDB person id. */
+  people: {
+    /** Followed people, newest first; `search` matches part of the name. Works offline. */
+    list: (search?: string) => Promise<FollowedPerson[]>
+    followedIds: () => Promise<number[]>
+    /** Following again only refreshes the stored name and photo. */
+    follow: (person: FollowPersonInput) => Promise<void>
+    unfollow: (personId: number) => Promise<void>
+    /** "Not interested" for a recommendation. */
+    dismiss: (personId: number) => Promise<void>
+    /** Shows dismissed recommendations again; returns how many were cleared. */
+    clearDismissed: () => Promise<number>
+    /** Profile and filmography from TMDB (cached for a week). */
+    details: (personId: number) => Promise<PersonDetails>
+    /** Fires when the followed list or dismissals change. */
+    onChanged: (listener: () => void) => () => void
   }
   /** Scene bookmarks of the video that is playing. */
   bookmarks: {

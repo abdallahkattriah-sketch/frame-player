@@ -59,6 +59,12 @@ import {
 import type { BookmarkService } from '../application/bookmark-service'
 import type { ThumbnailService } from '../media-engine/thumbnail-service'
 import { bookmarkEditSchema, bookmarkIdSchema } from '@shared/contracts/bookmarks'
+import type { PeopleRepository } from '../database/repositories/people-repository'
+import {
+  followPersonInputSchema,
+  peopleSearchSchema,
+  personIdSchema,
+} from '@shared/contracts/people'
 
 export interface IpcDependencies {
   settings: SettingsService
@@ -73,12 +79,14 @@ export interface IpcDependencies {
   thumbnails: ThumbnailService
   bookmarks: BookmarkService
   collections: CollectionRepository
+  people: PeopleRepository
   storage: StorageService
   /** Main data folder (opened from Settings > Storage). */
   openPath: (path: string) => Promise<string>
   /** Opens an https URL in the default browser. */
   openExternal: (url: string) => Promise<void>
   onLibraryChanged: () => void
+  onPeopleChanged: () => void
   onSettingsChanged: (settings: AppSettings) => void
   showMainView: (view: 'settings') => void
 }
@@ -494,6 +502,30 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
     deps.metadata.details(mediaType, tmdbId),
   )
   // The URL is built here from a validated type and number; nothing else can be opened.
+  const peopleChanged = () => deps.onPeopleChanged()
+  handle(IpcChannel.PeopleList, z.union([noArgs, z.tuple([peopleSearchSchema])]), ([search]) =>
+    deps.people.list(search),
+  )
+  handle(IpcChannel.PeopleFollowedIds, noArgs, () => [...deps.people.followedIds()])
+  handle(IpcChannel.PeopleFollow, z.tuple([followPersonInputSchema]), ([person]) => {
+    deps.people.follow(person)
+    peopleChanged()
+  })
+  handle(IpcChannel.PeopleUnfollow, z.tuple([personIdSchema]), ([id]) => {
+    if (deps.people.unfollow(id)) peopleChanged()
+  })
+  handle(IpcChannel.PeopleDismiss, z.tuple([personIdSchema]), ([id]) => {
+    deps.people.dismiss(id)
+    peopleChanged()
+  })
+  handle(IpcChannel.PeopleClearDismissed, noArgs, () => {
+    const cleared = deps.people.clearDismissed()
+    peopleChanged()
+    return cleared
+  })
+  handle(IpcChannel.PeopleDetails, z.tuple([personIdSchema]), ([id]) =>
+    deps.metadata.personDetails(id),
+  )
   handle(IpcChannel.MetadataOpenTmdbPage, tmdbRefSchema, ([mediaType, tmdbId]) =>
     deps.openExternal(`https://www.themoviedb.org/${mediaType}/${tmdbId}`),
   )

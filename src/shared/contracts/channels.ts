@@ -70,6 +70,13 @@ export const IpcChannel = {
   MetadataTrailer: 'metadata:trailer',
   MetadataDetails: 'metadata:details',
   MetadataOpenTmdbPage: 'metadata:open-tmdb-page',
+  PeopleList: 'people:list',
+  PeopleFollowedIds: 'people:followed-ids',
+  PeopleFollow: 'people:follow',
+  PeopleUnfollow: 'people:unfollow',
+  PeopleDismiss: 'people:dismiss',
+  PeopleClearDismissed: 'people:clear-dismissed',
+  PeopleDetails: 'people:details',
   SubtitleProviders: 'subtitles:providers',
   SubtitleValidateProvider: 'subtitles:validate-provider',
   SubtitleSearch: 'subtitles:search',
@@ -86,6 +93,7 @@ export const IpcChannel = {
   MetadataStatusChanged: 'metadata:status-changed',
   SubtitleProvidersChanged: 'subtitles:providers-changed',
   BookmarksChanged: 'bookmarks:changed',
+  PeopleChanged: 'people:changed',
 } as const
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel]

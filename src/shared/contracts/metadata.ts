@@ -60,8 +60,18 @@ export const tmdbRefSchema = z.tuple([z.enum(['movie', 'tv']), z.number().int().
 export type MatchStatus = 'matched' | 'candidates' | 'no-match' | 'rejected' | 'error'
 
 export interface CastMember {
+  /** TMDB person id; null in entries stored before people could be followed. */
+  personId: number | null
   name: string
   character: string | null
+  profilePath: string | null
+}
+
+/** A director, writer, producer, or show creator. */
+export interface CrewMember {
+  personId: number
+  name: string
+  job: string
   profilePath: string | null
 }
 
@@ -86,6 +96,8 @@ export interface MediaMetadata {
   cast: CastMember[]
   /** Directors (movies) or creators (TV). */
   creators: string[]
+  /** Key crew with person ids, for following them. */
+  crew: CrewMember[]
   production: string[]
   fetchedAt: string
 }

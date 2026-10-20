@@ -192,6 +192,7 @@ if (!app.requestSingleInstanceLock()) {
       ...services,
       player,
       onLibraryChanged: notifyLibraryChanged,
+      onPeopleChanged: () => broadcast(IpcChannel.PeopleChanged, null),
       onSettingsChanged: (settings) => {
         broadcast(IpcChannel.SettingsChanged, settings)
         if (mainWindow && !mainWindow.isDestroyed()) {

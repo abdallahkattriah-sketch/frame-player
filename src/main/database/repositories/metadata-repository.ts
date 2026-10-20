@@ -1,5 +1,6 @@
 import type {
   CastMember,
+  CrewMember,
   EpisodeMetadata,
   MatchCandidate,
   MatchStatus,
@@ -195,8 +196,8 @@ export class MetadataRepository {
         `INSERT OR REPLACE INTO metadata_items (media_type, tmdb_id, title, original_title, overview,
            release_date, year, runtime_minutes, poster_path, backdrop_path, vote_average, vote_count,
            original_language, imdb_id, tvdb_id, genres_json, cast_json, creators_json,
-           production_json, fetched_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           crew_json, production_json, fetched_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         m.mediaType,
@@ -217,6 +218,7 @@ export class MetadataRepository {
         JSON.stringify(m.genres),
         JSON.stringify(m.cast),
         JSON.stringify(m.creators),
+        JSON.stringify(m.crew),
         JSON.stringify(m.production),
         m.fetchedAt,
       )
@@ -241,14 +243,16 @@ export class MetadataRepository {
                 poster_path AS posterPath, backdrop_path AS backdropPath, vote_average AS voteAverage,
                 vote_count AS voteCount, original_language AS originalLanguage, imdb_id AS imdbId,
                 tvdb_id AS tvdbId, genres_json AS genres, cast_json AS "cast",
-                creators_json AS creators, production_json AS production, fetched_at AS fetchedAt
+                creators_json AS creators, crew_json AS crew, production_json AS production,
+                fetched_at AS fetchedAt
          FROM metadata_items WHERE media_type = ? AND tmdb_id = ?`,
       )
       .get(mediaType, tmdbId) as
-      | (Omit<MediaMetadata, 'genres' | 'cast' | 'creators' | 'production'> & {
+      | (Omit<MediaMetadata, 'genres' | 'cast' | 'creators' | 'crew' | 'production'> & {
           genres: string
           cast: string
           creators: string
+          crew: string
           production: string
         })
       | undefined
@@ -256,8 +260,13 @@ export class MetadataRepository {
     return {
       ...r,
       genres: parseJson<string[]>(r.genres, []),
-      cast: parseJson<CastMember[]>(r.cast, []),
+      // Entries stored before v8 have no person ids.
+      cast: parseJson<CastMember[]>(r.cast, []).map((c) => ({
+        ...c,
+        personId: c.personId ?? null,
+      })),
       creators: parseJson<string[]>(r.creators, []),
+      crew: parseJson<CrewMember[]>(r.crew, []),
       production: parseJson<string[]>(r.production, []),
     }
   }

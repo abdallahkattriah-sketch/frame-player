@@ -84,8 +84,14 @@ const routes: Record<string, unknown> = {
     production_companies: [{ id: 1, name: 'Warner Bros.' }],
     credits: {
       cast: [
-        { name: 'Laurence Fishburne', character: 'Morpheus', order: 1, profile_path: null },
-        { name: 'Keanu Reeves', character: 'Neo', order: 0, profile_path: '/keanu.jpg' },
+        {
+          id: 2975,
+          name: 'Laurence Fishburne',
+          character: 'Morpheus',
+          order: 1,
+          profile_path: null,
+        },
+        { id: 6384, name: 'Keanu Reeves', character: 'Neo', order: 0, profile_path: '/keanu.jpg' },
       ],
       crew: [
         { name: 'Lana Wachowski', job: 'Director' },
@@ -435,6 +441,27 @@ describe('MetadataService identification', () => {
     await expect(setup({ enabled: false }).service.details('movie', 603)).rejects.toThrow(
       /turned off/,
     )
+  })
+
+  it('refetches details stored before person ids existed, but serves them when offline', async () => {
+    const { service, calls, db } = setup()
+    expect((await service.details('movie', 603)).cast[0]?.personId).toBe(6384)
+    const legacyCast = `UPDATE metadata_items SET cast_json = '[{"name":"Keanu Reeves","character":"Neo","profilePath":null}]'`
+    db.prepare(legacyCast).run()
+    const before = calls.length
+    expect((await service.details('movie', 603)).cast[0]?.personId).toBe(6384)
+    expect(calls.length).toBe(before + 1)
+
+    const offline = setup({ enabled: false })
+    offline.repo.saveMetadata({
+      ...(await service.details('movie', 603)),
+      fetchedAt: new Date().toISOString(),
+    })
+    offline.db.prepare(legacyCast).run()
+    expect((await offline.service.details('movie', 603)).cast[0]).toMatchObject({
+      name: 'Keanu Reeves',
+      personId: null,
+    })
   })
 
   it('matches a show once and attaches episode details to each local episode', async () => {

@@ -20,6 +20,7 @@ const pushChannels = new Set<string>([
   IpcChannel.MetadataStatusChanged,
   IpcChannel.SubtitleProvidersChanged,
   IpcChannel.BookmarksChanged,
+  IpcChannel.PeopleChanged,
   IpcChannel.SettingsChanged,
   IpcChannel.AppNavigate,
 ])

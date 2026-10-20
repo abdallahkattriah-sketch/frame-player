@@ -122,6 +122,19 @@ const api: FrameApi = {
       ipcRenderer.invoke(IpcChannel.MetadataOpenTmdbPage, mediaType, tmdbId),
     onStatus: (listener) => subscribe<MetadataStatus>(IpcChannel.MetadataStatusChanged, listener),
   },
+  people: {
+    list: (search) =>
+      search === undefined
+        ? ipcRenderer.invoke(IpcChannel.PeopleList)
+        : ipcRenderer.invoke(IpcChannel.PeopleList, search),
+    followedIds: () => ipcRenderer.invoke(IpcChannel.PeopleFollowedIds),
+    follow: (person) => ipcRenderer.invoke(IpcChannel.PeopleFollow, person),
+    unfollow: (personId) => ipcRenderer.invoke(IpcChannel.PeopleUnfollow, personId),
+    dismiss: (personId) => ipcRenderer.invoke(IpcChannel.PeopleDismiss, personId),
+    clearDismissed: () => ipcRenderer.invoke(IpcChannel.PeopleClearDismissed),
+    details: (personId) => ipcRenderer.invoke(IpcChannel.PeopleDetails, personId),
+    onChanged: (listener) => subscribe<null>(IpcChannel.PeopleChanged, () => listener()),
+  },
   bookmarks: {
     list: () => ipcRenderer.invoke(IpcChannel.BookmarksList),
     add: () => ipcRenderer.invoke(IpcChannel.BookmarksAdd),
