@@ -12,6 +12,7 @@ import {
   upcomingAndRecent,
   type FilmographyEntry,
 } from './filmography'
+import { formatDay } from './filmography'
 import { usePeopleActions } from './people-actions'
 import { useFollowedIds } from './use-people'
 
@@ -21,13 +22,6 @@ function errorText(e: unknown) {
   return e instanceof Error
     ? e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
     : String(e)
-}
-
-/** "12 Mar 2027" for a TMDB YYYY-MM-DD date, read as a calendar day (no time zone shift). */
-export function formatDay(date: string): string {
-  const [y, m, d] = date.split('-').map(Number)
-  if (!y || !m || !d) return date
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, { dateStyle: 'medium' })
 }
 
 /** Profile of an actor, director, or other person, with their filmography from TMDB. */

@@ -22,6 +22,10 @@ accounts, analytics or telemetry.
   download from OpenSubtitles and SubSource (optional, your own keys); Subtitle Studio for
   fonts, colors, outline, background and position with saved profiles.
 - **Bookmarks** with thumbnails, **collections and playlists**.
+- **People and Radar** (needs TMDB): follow actors, directors, and writers; their upcoming,
+  new, and digital releases with Egyptian dates when TMDB has them (otherwise the US date,
+  labeled); popular movies; suggested people; and in-app notifications for new releases.
+- **Plays inside the main window**, with a close button that returns to where you were.
 - **Customization**: Theme Studio (five built-in themes, custom themes, import/export, contrast
   warnings), editable keyboard shortcuts, command palette (Ctrl+K), density, text size and more.
 - **First-run setup**, every step optional.
@@ -88,6 +92,9 @@ See [docs/BUILDING.md](docs/BUILDING.md).
 - Timeline previews are taken at the nearest keyframe and appear after a short delay.
 - Packaged builds do not write a log file.
 - No automatic updates.
+- Radar checks TMDB when Frame starts and when Radar is opened, never in the background.
+  TMDB often has no Egyptian release date; digital dates are shown only when TMDB lists them
+  and do not mean a title is on a particular streaming service.
 
 ## Documentation
 

@@ -3,7 +3,6 @@ import { Users } from 'lucide-react'
 import { Dropdown } from '@renderer/components/ui/Dropdown'
 import { FollowButton, PersonPhoto } from './FollowButton'
 import { departmentLabel } from './filmography'
-import { formatDay } from './PersonDialog'
 import { usePeopleActions } from './people-actions'
 import { useFollowedPeople } from './use-people'
 
@@ -87,7 +86,10 @@ export function PeopleView({ search }: { search: string }) {
                       {p.department ? departmentLabel(p.department) : 'Unknown department'}
                     </span>
                     <span className="block truncate text-[11px] text-subtle">
-                      Since {formatDay(p.followedAt.slice(0, 10))}
+                      Since{' '}
+                      {new Date(p.followedAt).toLocaleDateString(undefined, {
+                        dateStyle: 'medium',
+                      })}
                     </span>
                   </span>
                 </button>

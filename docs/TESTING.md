@@ -1,8 +1,9 @@
 # Testing and acceptance
 
 How each acceptance criterion from the project specification (§22) is verified, and how to run
-the checks. Last full run: 2026-10-18, Windows 11, Electron 44 — 217 unit tests passed
-(9 live-API tests skipped without keys), 23/23 end-to-end tests passed.
+the checks. Last full run: 2026-10-20, Windows 11, Electron 44 — 266 unit tests passed
+(9 live-API tests skipped without keys), 27/27 end-to-end tests passed, packaged smoke test
+passed on `release/win-unpacked`.
 
 ## Running the checks
 
@@ -65,6 +66,38 @@ npx vitest run tests/integration
 | Closing the app cleans up mpv                 | Automated | `playback.spec` (mpv gone after close)                                                                                                                              |
 | mpv does not outlive a crashed Frame          | Automated | `resilience.spec` (main process killed; its mpv ends). On Windows, Node places non-detached children in a kill-on-close job object; mpv is never spawned `detached` |
 | An mpv crash is reported and recoverable      | Automated | `resilience.spec`                                                                                                                                                   |
+
+### In-window player
+
+| Criterion                                                   | Evidence   | Where                                                                                              |
+| ----------------------------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------- |
+| Plays inside the main window, no separate top-level window  | Automated  | `player-embed.spec` (one top-level window; host owned by the main window, inside its content area) |
+| Follows move, resize, minimize, restore                     | Automated  | `player-embed.spec`                                                                                |
+| Fullscreen fills the window; Escape leaves it               | Automated  | `player-embed.spec`                                                                                |
+| Click on the picture pauses; Space; Escape closes nothing   | Automated  | `player-embed.spec`                                                                                |
+| Close button ends playback, mpv gone, same view afterwards  | Automated  | `player-embed.spec` (opened from People, closed back to People)                                    |
+| Progress saved on close and resumed after restart           | Automated  | `library-browse.spec` (now with the in-window player)                                              |
+| Browsing while playing tucks the player into Now Playing    | Automated  | `player-embed.spec`, `library-browse.spec`                                                         |
+| Video visible in place, no flicker, at your display scaling | **Manual** | not yet checked by a person — see the checklist below                                              |
+
+Manual checklist for the in-window player (`npm run dev`, or the packaged app): play a video
+from the library; the picture appears right of the sidebar and below the toolbar; drag,
+resize, maximize, minimize and restore the window; fullscreen and Escape; click the picture to
+pause; open the sidebar and use Show player; the window's own minimize/maximize/close buttons
+stay usable; close with × and check you are back where you started.
+
+### People and Radar
+
+| Criterion                                                          | Evidence    | Where                                                                                          |
+| ------------------------------------------------------------------ | ----------- | ---------------------------------------------------------------------------------------------- |
+| Follow/unfollow by TMDB person id, no duplicates, survives restart | Automated   | `people.test`, `people.spec`                                                                   |
+| Profiles with missing details; filmography grouped by role         | Automated   | `people.test`, `filmography.test`                                                              |
+| Theatrical vs digital; Egypt first, US labeled, no invented dates  | Automated   | `radar.test`, `radar-service.test`; mocked end to end in `radar.spec`                          |
+| Each movie once per section with every followed person on it       | Automated   | `radar.test`, `radar-service.test`                                                             |
+| Nobody followed; offline / TMDB failure shows last saved results   | Automated   | `radar-service.test`, `radar.spec`                                                             |
+| Notifications once per release, across restarts; read/dismiss      | Automated   | `radar-notifications.test`, `radar.spec`                                                       |
+| Suggestions explain themselves; followed/dismissed excluded        | Automated   | `radar-notifications.test`, `radar.spec`                                                       |
+| Real TMDB person, release-date, and popular-people responses       | **Not run** | needs `FRAME_TEST_TMDB_TOKEN`; how often TMDB has Egyptian dates is unknown until checked live |
 
 ### Library
 

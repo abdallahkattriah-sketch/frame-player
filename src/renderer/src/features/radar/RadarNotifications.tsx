@@ -3,7 +3,7 @@ import { Bell, CheckCheck, Film, X } from 'lucide-react'
 import type { RadarNotification } from '@shared/contracts/radar'
 import { Artwork } from '@renderer/components/ui/Artwork'
 import { useSettings } from '@renderer/app/settings-context'
-import { formatDay } from '@renderer/features/people/PersonDialog'
+import { formatDay } from '@renderer/features/people/filmography'
 import { usePeopleActions } from '@renderer/features/people/people-actions'
 
 function describe(n: RadarNotification): string {

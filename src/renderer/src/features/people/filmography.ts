@@ -89,3 +89,10 @@ export function departmentForJob(job: string): string {
   if (job === 'Creator') return 'Creator'
   return 'Crew'
 }
+
+/** "12 Mar 2027" for a TMDB YYYY-MM-DD date, read as a calendar day (no time zone shift). */
+export function formatDay(date: string): string {
+  const [y, m, d] = date.split('-').map(Number)
+  if (!y || !m || !d) return date
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { dateStyle: 'medium' })
+}
