@@ -13,7 +13,7 @@ function describe(n: RadarNotification): string {
 }
 
 /** Toolbar bell listing new releases of followed people, each announced once. */
-export function RadarNotifications() {
+export function RadarNotifications({ onOpen }: { onOpen?: () => void }) {
   const { settings } = useSettings()
   const enabled = settings?.metadata.radarNotifications ?? true
   const { openTitle } = usePeopleActions()
@@ -82,7 +82,10 @@ export function RadarNotifications() {
         aria-label={unread ? `Release notifications, ${unread} unread` : 'Release notifications'}
         title="Release notifications"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (!open) onOpen?.()
+          setOpen((v) => !v)
+        }}
         className={`relative flex size-8 items-center justify-center rounded-md text-muted transition hover:bg-elevated hover:text-text ${open ? 'bg-elevated text-text' : ''}`}
       >
         <Bell

@@ -165,12 +165,11 @@ export class PlayerController {
       return
     }
     if (command.type === 'show-player') {
-      const front = owner ?? this.host
-      if (front && !front.isDestroyed()) {
-        if (front.isMinimized()) front.restore()
-        front.focus()
-        if (owner && this.overlay && !this.overlay.isDestroyed()) this.overlay.focus()
-      }
+      this.bringToFront()
+      return
+    }
+    if (command.type === 'hide-player') {
+      this.hideEmbedded()
       return
     }
     if (command.type === 'close-player') {
@@ -249,12 +248,39 @@ export class PlayerController {
     this.mpv = null
   }
 
+  /** Shows the player (again, if it was tucked away) and gives it the keyboard. */
+  private bringToFront() {
+    const host = this.host
+    if (!host || host.isDestroyed()) return
+    const owner = this.owner && !this.owner.isDestroyed() ? this.owner : null
+    const front = owner ?? host
+    if (front.isMinimized()) front.restore()
+    if (owner && !host.isVisible()) {
+      host.show()
+      if (this.overlay && !this.overlay.isDestroyed()) this.overlay.show()
+      this.syncBounds?.()
+      this.keepVideoOnTop()
+      this.update({ ...this.state, embedded: 'shown' })
+    }
+    front.focus()
+    if (owner && this.overlay && !this.overlay.isDestroyed()) this.overlay.focus()
+  }
+
+  /** Inside the main window: hides the player so the page can be used; playback continues. */
+  private hideEmbedded() {
+    const owner = this.owner && !this.owner.isDestroyed() ? this.owner : null
+    const host = this.host
+    if (!owner || !host || host.isDestroyed() || !host.isVisible()) return
+    if (owner.isFullScreen()) owner.setFullScreen(false)
+    if (this.overlay && !this.overlay.isDestroyed()) this.overlay.hide()
+    host.hide()
+    this.update({ ...this.state, embedded: 'hidden' })
+    owner.focus()
+  }
+
   private ensureWindows(): void {
     if (this.host && !this.host.isDestroyed()) {
-      const front = this.owner && !this.owner.isDestroyed() ? this.owner : this.host
-      if (front.isMinimized()) front.restore()
-      front.focus()
-      if (this.owner && this.overlay && !this.overlay.isDestroyed()) this.overlay.focus()
+      this.bringToFront()
       return
     }
 
@@ -329,6 +355,11 @@ export class PlayerController {
       this.update({ ...this.state, fullscreen: false })
     }
     const follow = () => {
+      if (owner && this.state.embedded === 'hidden') {
+        if (!host.isDestroyed() && host.isVisible()) host.hide()
+        if (!overlay.isDestroyed() && overlay.isVisible()) overlay.hide()
+        return
+      }
       syncBounds()
       this.keepVideoOnTop()
     }
@@ -348,7 +379,6 @@ export class PlayerController {
     // put the player back over its area then.
     const hostListeners: [string, () => void][] = owner
       ? [
-          ['show', follow],
           ['restore', follow],
           ['move', syncBounds],
           ['resize', syncBounds],
@@ -386,6 +416,7 @@ export class PlayerController {
     this.overlay = overlay
     this.owner = owner
     this.syncBounds = syncBounds
+    this.update({ ...this.state, embedded: owner ? 'shown' : null })
 
     syncBounds()
     host.show()

@@ -63,6 +63,11 @@ export interface PlayerState {
   /** True once mpv has configured a video output for the current file. */
   videoActive: boolean
   fullscreen: boolean
+  /**
+   * Inside the main window: 'shown' over its content, or 'hidden' (tucked into the Now Playing
+   * bar while the user browses). Null when the player has its own window or is closed.
+   */
+  embedded: 'shown' | 'hidden' | null
   tracks: PlayerTrack[]
   subtitlesVisible: boolean
   /** Seconds; positive delays the stream. */
@@ -95,6 +100,7 @@ export const initialPlayerState: PlayerState = {
   eofReached: false,
   videoActive: false,
   fullscreen: false,
+  embedded: null,
   tracks: [],
   subtitlesVisible: true,
   audioDelay: 0,
@@ -143,6 +149,8 @@ export const playerCommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('show-player') }),
   /** Ends playback and closes the player, returning to the main window. */
   z.object({ type: z.literal('close-player') }),
+  /** Inside the main window: hides the player while playback goes on (Now Playing bar). */
+  z.object({ type: z.literal('hide-player') }),
   z.object({
     type: z.literal('set-speed'),
     speed: z.number().finite().min(MIN_SPEED).max(MAX_SPEED),

@@ -87,12 +87,17 @@ test('browse, play, remember progress, resume after restart, and manage items', 
     await expect(page.getByTestId('item-count')).toHaveText('1 item')
     await page.getByRole('button', { name: 'Clear search' }).click()
 
-    // Play the movie from the library; the main window shows a mini-player.
+    // Play the movie from the library; it plays inside the main window.
     await page.getByRole('button', { name: 'Movies' }).click()
     await page.getByRole('button', { name: 'Play Test Pattern' }).click()
     const player = await overlay(app)
     await waitPlayer(player, (s) => s.status === 'ready', 'movie playing')
+    // The Now Playing bar appears only while the player is tucked away to browse.
+    await expect(page.getByTestId('mini-player')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Home' }).click()
     await expect(page.getByTestId('mini-player')).toContainText('Test Pattern (2024).mkv')
+    await page.getByRole('button', { name: 'Show player' }).click()
+    await expect(page.getByTestId('mini-player')).toHaveCount(0)
 
     // An exact seek while paused: playing fast and pausing later could overshoot past the
     // "watched" threshold of this 12-second clip, which removes it from Continue Watching.

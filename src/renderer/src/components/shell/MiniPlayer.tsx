@@ -6,7 +6,8 @@ import { usePlayerState } from '@renderer/features/player/use-player-state'
 /** Compact now-playing bar in the main window while the player is open. */
 export function MiniPlayer() {
   const state = usePlayerState()
-  if (!state.path || state.status === 'closed') return null
+  // Inside the main window the player itself is showing; the bar is for when it is tucked away.
+  if (!state.path || state.status === 'closed' || state.embedded === 'shown') return null
   const fraction = state.duration ? Math.min(1, (state.position ?? 0) / state.duration) : 0
 
   return (

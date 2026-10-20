@@ -262,6 +262,7 @@ export function toMpvCommands(command: PlayerCommand): MpvCommand[] {
     case 'toggle-fullscreen':
     case 'show-player':
     case 'close-player':
+    case 'hide-player':
       return []
     case 'set-speed':
       return [['set_property', 'speed', command.speed]]

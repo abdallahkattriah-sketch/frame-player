@@ -163,6 +163,45 @@ test('plays inside the main window, follows it, and closes back to the same view
     await expect.poll(async () => (await state(overlay)).fullscreen).toBe(false)
     await expect.poll(async () => (await geometry(app)).host).toEqual(before)
 
+    // Clicking the picture toggles pause; Escape outside fullscreen closes nothing.
+    await overlay.mouse.move(400, 200)
+    const surface = overlay.getByTestId('player-overlay')
+    const box = await surface.boundingBox()
+    if (!box) throw new Error('No player surface')
+    await overlay.mouse.click(box.x + box.width / 2, box.y + box.height / 3)
+    await expect.poll(async () => (await state(overlay)).paused).toBe(false)
+    await overlay.mouse.click(box.x + box.width / 2, box.y + box.height / 3)
+    await expect.poll(async () => (await state(overlay)).paused).toBe(true)
+    await overlay.keyboard.press('Escape')
+    await overlay.keyboard.press('Space')
+    await expect.poll(async () => (await state(overlay)).paused).toBe(false)
+    expect((await geometry(app)).host).not.toBeNull()
+
+    // Using the main window tucks the player into the Now Playing bar; playback goes on.
+    await expect(page.getByTestId('mini-player')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Radar' }).click({ force: true })
+    await expect.poll(async () => (await geometry(app)).hostVisible).toBe(false)
+    await expect(page.getByTestId('mini-player')).toBeVisible()
+    expect((await state(overlay)).embedded).toBe('hidden')
+    expect((await state(overlay)).paused).toBe(false)
+    // A tucked-away player stays hidden when the window is minimized and restored.
+    await app.evaluate(({ BrowserWindow }) => {
+      const main = BrowserWindow.getAllWindows().find(
+        (w) => !w.webContents.getURL().endsWith('#/player'),
+      )
+      main?.minimize()
+      main?.restore()
+    })
+    await new Promise((r) => setTimeout(r, 500))
+    expect((await geometry(app)).hostVisible).toBe(false)
+    await page.getByRole('button', { name: 'Show player' }).click()
+    await expect.poll(async () => (await geometry(app)).hostVisible).toBe(true)
+    await expect.poll(async () => (await geometry(app)).host).toEqual(before)
+    await expect(page.getByTestId('mini-player')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Home' }).click({ force: true })
+    await page.getByRole('button', { name: 'Show player' }).click()
+    await expect.poll(async () => (await geometry(app)).hostVisible).toBe(true)
+
     pids = frameMpvPids()
     expect(pids.length).toBe(1)
 

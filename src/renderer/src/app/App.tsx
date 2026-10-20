@@ -4,6 +4,8 @@ import type { TmdbSearchResult } from '@shared/contracts/metadata'
 import { PeopleView } from '@renderer/features/people/PeopleView'
 import { RadarView } from '@renderer/features/radar/RadarView'
 import { RadarNotifications } from '@renderer/features/radar/RadarNotifications'
+import { usePlayerState } from '@renderer/features/player/use-player-state'
+import { sendCommand } from '@renderer/features/player/send-command'
 import { PersonDialog } from '@renderer/features/people/PersonDialog'
 import { PeopleActionsContext, type PeopleActions } from '@renderer/features/people/people-actions'
 import { TmdbDetailsDialog } from '@renderer/features/metadata/TmdbDetailsDialog'
@@ -62,10 +64,28 @@ export function App() {
   }, [])
   const closeTop = (key: number) => setStack((s) => s.filter((e) => e.key !== key))
 
-  const navigate = useCallback((id: ViewId) => {
-    setActiveView(id)
-    if (id === 'home' || id === 'radar' || id === 'history' || id === 'settings') setSearch('')
-  }, [])
+  const player = usePlayerState()
+  const playerShown = player.embedded === 'shown'
+  // Pages and dialogs cannot be drawn over the video: using the main window tucks the player
+  // into the Now Playing bar (playback continues) instead of hiding them behind it.
+  const tuckPlayer = useCallback(() => {
+    if (playerShown) sendCommand({ type: 'hide-player' })
+  }, [playerShown])
+  const navigate = useCallback(
+    (id: ViewId) => {
+      tuckPlayer()
+      setActiveView(id)
+      if (id === 'home' || id === 'radar' || id === 'history' || id === 'settings') setSearch('')
+    },
+    [tuckPlayer],
+  )
+  const changeSearch = useCallback(
+    (value: string) => {
+      tuckPlayer()
+      setSearch(value)
+    },
+    [tuckPlayer],
+  )
   const openPalette = useCallback(() => setShowPalette(true), [])
   const openSettings = useCallback(() => navigate('settings'), [navigate])
   useAppShortcuts({
@@ -143,8 +163,8 @@ export function App() {
           activeView={activeView}
           onNavigate={navigate}
           search={search}
-          onSearchChange={setSearch}
-          toolbarActions={<RadarNotifications />}
+          onSearchChange={changeSearch}
+          toolbarActions={<RadarNotifications onOpen={tuckPlayer} />}
           aside={
             detailsItem && (
               <DetailsPanel

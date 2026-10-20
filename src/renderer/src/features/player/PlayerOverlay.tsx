@@ -73,6 +73,9 @@ function IconButton({
   )
 }
 
+/** Longest gap between the clicks of a double click (fullscreen) on the picture. */
+const DOUBLE_CLICK_MS = 250
+
 export function PlayerOverlay() {
   const state = usePlayerState()
   const idle = useIdle(2500)
@@ -86,6 +89,7 @@ export function PlayerOverlay() {
   const [compact, setCompact] = useState(false)
   const [audioMenuOpen, setAudioMenuOpen] = useState(false)
   const toastTimer = useRef<number | undefined>(undefined)
+  const clickTimer = useRef<number | null>(null)
   const { settings } = useSettings()
   const seekStep = settings?.playback.seekStepSeconds ?? defaultSettings.playback.seekStepSeconds
   const shortcutMap = useMemo(
@@ -228,7 +232,21 @@ export function PlayerOverlay() {
   return (
     <div
       className={`relative h-full w-full select-none ${controlsHidden ? 'cursor-none' : ''}`}
-      onDoubleClick={() => sendCommand({ type: 'toggle-fullscreen' })}
+      onClick={(e) => {
+        // Only clicks on the picture itself, not on controls or panels above it.
+        if (e.target !== e.currentTarget) return
+        // A double click toggles fullscreen instead, so wait to see if a second click follows.
+        if (clickTimer.current) window.clearTimeout(clickTimer.current)
+        clickTimer.current = window.setTimeout(() => {
+          clickTimer.current = null
+          sendCommand({ type: 'toggle-pause' })
+        }, DOUBLE_CLICK_MS)
+      }}
+      onDoubleClick={() => {
+        if (clickTimer.current) window.clearTimeout(clickTimer.current)
+        clickTimer.current = null
+        sendCommand({ type: 'toggle-fullscreen' })
+      }}
       data-testid="player-overlay"
       data-status={state.status}
       {...drop.handlers}
