@@ -12,6 +12,7 @@ import {
   SkipForward,
   Volume2,
   VolumeX,
+  X,
 } from 'lucide-react'
 import { defaultSettings } from '@shared/settings/schema'
 import {
@@ -276,6 +277,20 @@ export function PlayerOverlay() {
           onClose={() => setShowSubtitleSearch(false)}
         />
       )}
+
+      <button
+        type="button"
+        aria-label="Close player"
+        title="Close player"
+        onClick={() => sendCommand({ type: 'close-player' })}
+        onDoubleClick={(e) => e.stopPropagation()}
+        className={`absolute top-3 right-3 z-20 flex size-9 items-center justify-center rounded-full border border-border/60 bg-bg/80 text-text shadow-lg backdrop-blur transition duration-300 hover:rotate-90 hover:bg-danger hover:text-white ${
+          controlsHidden ? 'pointer-events-none opacity-0' : 'opacity-100'
+        }`}
+        data-testid="player-close"
+      >
+        <X size={18} aria-hidden />
+      </button>
 
       {toast && (
         <div

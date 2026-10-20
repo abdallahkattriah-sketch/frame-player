@@ -17,7 +17,13 @@ import type {
   PersonDetails,
 } from './people'
 import type { RadarNotification, RadarResult, ReleaseKind } from './radar'
-import type { OpenMediaResult, PlayerCommand, PlayerState, ScreenshotResult } from './player'
+import type {
+  OpenMediaResult,
+  PlayerArea,
+  PlayerCommand,
+  PlayerState,
+  ScreenshotResult,
+} from './player'
 import type {
   AddFolderResult,
   FolderOptions,
@@ -118,6 +124,8 @@ export interface FrameApi {
     openDroppedFiles: (files: readonly File[]) => Promise<OpenMediaResult>
     getState: () => Promise<PlayerState>
     command: (command: PlayerCommand) => Promise<void>
+    /** The main window reports where the player goes inside it (right of the sidebar). */
+    setArea: (area: PlayerArea) => Promise<void>
     screenshot: () => Promise<ScreenshotResult>
     /**
      * Timeline preview image URL for a position in the playing video, generated on demand.

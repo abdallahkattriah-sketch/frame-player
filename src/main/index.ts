@@ -151,6 +151,7 @@ if (!app.requestSingleInstanceLock()) {
       loadOverlay: (win) => loadRoute(win, '/player'),
       devServerUrl,
       raiseVideoWindow,
+      getOwner: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null),
       getEngineSettings: () => {
         const playback = services?.settings.get().playback
         return {

@@ -37,6 +37,7 @@ export const IpcChannel = {
   PlayerOpenPaths: 'player:open-paths',
   PlayerGetState: 'player:get-state',
   PlayerCommand: 'player:command',
+  PlayerSetArea: 'player:set-area',
   PlayerScreenshot: 'player:screenshot',
   PlayerPreview: 'player:preview',
   BookmarksList: 'bookmarks:list',

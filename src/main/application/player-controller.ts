@@ -4,6 +4,7 @@ import { basename, extname, join } from 'node:path'
 import {
   initialPlayerState,
   type OpenMediaResult,
+  type PlayerArea,
   type PlayerCommand,
   type PlayerState,
   type ScreenshotResult,
@@ -25,6 +26,11 @@ export interface PlayerControllerOptions {
   /** Loads the renderer's player overlay route into a window. */
   loadOverlay: (win: BrowserWindow) => Promise<void>
   devServerUrl: string | undefined
+  /**
+   * The main window. When it has reported its player area, the player is shown inside it: an
+   * owned, frameless window kept over that area. Without it, the player opens its own window.
+   */
+  getOwner?: () => BrowserWindow | null
   /** Raises mpv's video child window above Electron's compositor window; false if not found. */
   raiseVideoWindow: (hostHwnd: number) => boolean
   /** Read each time the engine starts. */
@@ -58,6 +64,7 @@ export interface PlayerControllerOptions {
 const STATE_FLUSH_MS = 100
 const RAISE_RETRY_MS = 100
 const RAISE_MAX_ATTEMPTS = 30
+const AREA_WAIT_MS = 5000
 
 /**
  * Owns the player window pair and the mpv process:
@@ -73,8 +80,40 @@ export class PlayerController {
   private state: PlayerState = initialPlayerState
   private flushTimer: NodeJS.Timeout | null = null
   private raiseTimer: NodeJS.Timeout | null = null
+  private area: PlayerArea | null = null
+  /** The main window the open player is shown inside, if any. */
+  private owner: BrowserWindow | null = null
+  private syncBounds: (() => void) | null = null
+  private areaWaiters: (() => void)[] = []
 
   constructor(private readonly options: PlayerControllerOptions) {}
+
+  /** Records where the main window shows the player and moves an open player there. */
+  setArea(area: PlayerArea): void {
+    this.area = area
+    this.syncBounds?.()
+    for (const resolve of this.areaWaiters.splice(0)) resolve()
+  }
+
+  /**
+   * Files opened at startup arrive before the main window's page has reported its player area:
+   * wait briefly for it so the player still opens inside the main window.
+   */
+  private waitForArea(): Promise<void> {
+    const owner = this.options.getOwner?.()
+    if (this.area || !owner || owner.isDestroyed()) return Promise.resolve()
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        this.areaWaiters = this.areaWaiters.filter((w) => w !== done)
+        resolve()
+      }, AREA_WAIT_MS)
+      const done = () => {
+        clearTimeout(timer)
+        resolve()
+      }
+      this.areaWaiters.push(done)
+    })
+  }
 
   getState(): PlayerState {
     return this.state
@@ -89,6 +128,7 @@ export class PlayerController {
     const [first, ...rest] = files
     if (!first) return { queued: 0, error: 'No supported video files were found.' }
 
+    await this.waitForArea()
     this.ensureWindows()
     try {
       const mpv = await this.ensureEngine()
@@ -117,15 +157,24 @@ export class PlayerController {
   }
 
   async command(command: PlayerCommand): Promise<void> {
+    const owner = this.owner && !this.owner.isDestroyed() ? this.owner : null
     if (command.type === 'toggle-fullscreen') {
-      this.host?.setFullScreen(!this.host.isFullScreen())
+      // Inside the main window, the main window goes fullscreen and the player fills it.
+      if (owner) owner.setFullScreen(!owner.isFullScreen())
+      else this.host?.setFullScreen(!this.host.isFullScreen())
       return
     }
     if (command.type === 'show-player') {
-      if (this.host && !this.host.isDestroyed()) {
-        if (this.host.isMinimized()) this.host.restore()
-        this.host.focus()
+      const front = owner ?? this.host
+      if (front && !front.isDestroyed()) {
+        if (front.isMinimized()) front.restore()
+        front.focus()
+        if (owner && this.overlay && !this.overlay.isDestroyed()) this.overlay.focus()
       }
+      return
+    }
+    if (command.type === 'close-player') {
+      if (this.host && !this.host.isDestroyed()) this.host.close()
       return
     }
     if (!this.mpv?.running) return
@@ -202,21 +251,40 @@ export class PlayerController {
 
   private ensureWindows(): void {
     if (this.host && !this.host.isDestroyed()) {
-      if (this.host.isMinimized()) this.host.restore()
-      this.host.focus()
+      const front = this.owner && !this.owner.isDestroyed() ? this.owner : this.host
+      if (front.isMinimized()) front.restore()
+      front.focus()
+      if (this.owner && this.overlay && !this.overlay.isDestroyed()) this.overlay.focus()
       return
     }
 
-    const host = new BaseWindow({
-      width: 1280,
-      height: 720,
-      minWidth: 480,
-      minHeight: 270,
-      title: 'Frame Player',
-      backgroundColor: '#000000',
-      autoHideMenuBar: true,
-      show: false,
-    })
+    const candidate = this.options.getOwner?.() ?? null
+    const owner = candidate && !candidate.isDestroyed() && this.area ? candidate : null
+    const host = owner
+      ? new BaseWindow({
+          parent: owner,
+          frame: false,
+          resizable: false,
+          movable: false,
+          minimizable: false,
+          maximizable: false,
+          fullscreenable: false,
+          skipTaskbar: true,
+          hasShadow: false,
+          title: 'Frame Player',
+          backgroundColor: '#000000',
+          show: false,
+        })
+      : new BaseWindow({
+          width: 1280,
+          height: 720,
+          minWidth: 480,
+          minHeight: 270,
+          title: 'Frame Player',
+          backgroundColor: '#000000',
+          autoHideMenuBar: true,
+          show: false,
+        })
     const overlay = new BrowserWindow({
       parent: host,
       frame: false,
@@ -234,35 +302,81 @@ export class PlayerController {
     hardenWebContents(overlay.webContents, this.options.devServerUrl)
 
     const syncBounds = () => {
-      if (!host.isDestroyed() && !overlay.isDestroyed()) overlay.setBounds(host.getContentBounds())
+      if (host.isDestroyed() || overlay.isDestroyed()) return
+      if (owner && !owner.isDestroyed()) {
+        const target = this.embeddedBounds(owner)
+        const now = host.getBounds()
+        // Only when different: setting bounds raises 'resize', which calls this again.
+        if (
+          now.x !== target.x ||
+          now.y !== target.y ||
+          now.width !== target.width ||
+          now.height !== target.height
+        ) {
+          host.setBounds(target)
+        }
+      }
+      overlay.setBounds(host.getContentBounds())
     }
-    host.on('move', syncBounds)
-    host.on('resize', () => {
-      syncBounds()
-      this.keepVideoOnTop()
-    })
-    host.on('restore', () => this.keepVideoOnTop())
-    host.on('enter-full-screen', () => {
+    const enterFullScreen = () => {
       syncBounds()
       this.keepVideoOnTop()
       this.update({ ...this.state, fullscreen: true })
-    })
-    host.on('leave-full-screen', () => {
+    }
+    const leaveFullScreen = () => {
       syncBounds()
       this.keepVideoOnTop()
       this.update({ ...this.state, fullscreen: false })
-    })
+    }
+    const follow = () => {
+      syncBounds()
+      this.keepVideoOnTop()
+    }
+    // The window whose moves, resizes, and fullscreen changes the player follows.
+    const frame = owner ?? host
+    const listeners: [string, () => void][] = [
+      ['move', syncBounds],
+      ['resize', follow],
+      ['restore', follow],
+      ['maximize', follow],
+      ['unmaximize', follow],
+      ['enter-full-screen', enterFullScreen],
+      ['leave-full-screen', leaveFullScreen],
+    ]
+    for (const [event, listener] of listeners) frame.on(event as 'move', listener)
+    // Windows shows owned windows again after their owner is restored, at their own size;
+    // put the player back over its area then.
+    const hostListeners: [string, () => void][] = owner
+      ? [
+          ['show', follow],
+          ['restore', follow],
+          ['move', syncBounds],
+          ['resize', syncBounds],
+        ]
+      : []
+    for (const [event, listener] of hostListeners) host.on(event as 'move', listener)
+
     host.on('closed', () => {
       if (this.raiseTimer) clearTimeout(this.raiseTimer)
       this.raiseTimer = null
+      for (const [event, listener] of listeners) {
+        if (!frame.isDestroyed()) frame.removeListener(event as 'move', listener)
+      }
       if (this.state.path) this.options.onSessionEnded?.(this.state)
       if (!overlay.isDestroyed()) overlay.destroy()
       void this.mpv?.dispose()
       this.mpv = null
       this.host = null
       this.overlay = null
+      this.owner = null
+      this.syncBounds = null
       this.state = { ...initialPlayerState, status: 'closed' }
       this.flush()
+      // Back to the main window, as it was before playing.
+      if (owner && !owner.isDestroyed()) {
+        if (owner.isFullScreen()) owner.setFullScreen(false)
+        owner.focus()
+      }
     })
     overlay.on('closed', () => {
       if (!host.isDestroyed()) host.close()
@@ -270,15 +384,36 @@ export class PlayerController {
 
     this.host = host
     this.overlay = overlay
+    this.owner = owner
+    this.syncBounds = syncBounds
 
+    syncBounds()
     host.show()
     syncBounds()
     void this.options.loadOverlay(overlay).then(() => {
       if (overlay.isDestroyed()) return
       syncBounds()
       overlay.show()
+      // Keyboard shortcuts go to the player's controls.
+      if (owner) overlay.focus()
       this.flush()
     })
+  }
+
+  /** Screen bounds of the player area of the main window (all of it when fullscreen). */
+  private embeddedBounds(owner: BrowserWindow) {
+    const content = owner.getContentBounds()
+    const area = this.area
+    if (owner.isFullScreen() || !area) return content
+    const zoom = owner.webContents.getZoomFactor()
+    const x = Math.round(area.x * zoom)
+    const y = Math.round(area.y * zoom)
+    return {
+      x: content.x + x,
+      y: content.y + y,
+      width: Math.max(1, Math.min(Math.round(area.width * zoom), content.width - x)),
+      height: Math.max(1, Math.min(Math.round(area.height * zoom), content.height - y)),
+    }
   }
 
   private async ensureEngine(): Promise<MpvProcess> {

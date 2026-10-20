@@ -141,6 +141,8 @@ export const playerCommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('toggle-fullscreen') }),
   /** Brings the player window to the front. */
   z.object({ type: z.literal('show-player') }),
+  /** Ends playback and closes the player, returning to the main window. */
+  z.object({ type: z.literal('close-player') }),
   z.object({
     type: z.literal('set-speed'),
     speed: z.number().finite().min(MIN_SPEED).max(MAX_SPEED),
@@ -174,3 +176,14 @@ export interface OpenMediaResult {
 export interface ScreenshotResult {
   path: string
 }
+
+/** Where the main window shows the player, in CSS pixels of its page. */
+export const playerAreaSchema = z
+  .object({
+    x: z.number().finite().min(0).max(20_000),
+    y: z.number().finite().min(0).max(20_000),
+    width: z.number().finite().min(1).max(20_000),
+    height: z.number().finite().min(1).max(20_000),
+  })
+  .strict()
+export type PlayerArea = z.infer<typeof playerAreaSchema>

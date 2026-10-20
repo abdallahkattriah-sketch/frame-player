@@ -45,6 +45,7 @@ const api: FrameApi = {
     },
     getState: () => ipcRenderer.invoke(IpcChannel.PlayerGetState),
     command: (command) => ipcRenderer.invoke(IpcChannel.PlayerCommand, command),
+    setArea: (area) => ipcRenderer.invoke(IpcChannel.PlayerSetArea, area),
     screenshot: () => ipcRenderer.invoke(IpcChannel.PlayerScreenshot),
     previewAt: (seconds) => ipcRenderer.invoke(IpcChannel.PlayerPreview, seconds),
     onState: (listener) => subscribe<PlayerState>(IpcChannel.PlayerStateChanged, listener),

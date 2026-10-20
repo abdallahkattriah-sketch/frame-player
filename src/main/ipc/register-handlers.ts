@@ -2,7 +2,11 @@ import { app, BrowserWindow, dialog, shell } from 'electron'
 import { z } from 'zod'
 import { IpcChannel, appInfoSchema, type AppInfo, type StartupStatus } from '@shared/contracts/ipc'
 import { credentialIdSchema, credentialSecretSchema } from '@shared/contracts/credentials'
-import { playerCommandSchema, type OpenMediaResult } from '@shared/contracts/player'
+import {
+  playerAreaSchema,
+  playerCommandSchema,
+  type OpenMediaResult,
+} from '@shared/contracts/player'
 import { defaultVideoExtensions } from '@shared/constants/media'
 import { settingsPatchSchema } from '@shared/settings/schema'
 import type { SettingsService } from '../application/settings-service'
@@ -370,6 +374,9 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
     deps.player.openPaths(paths),
   )
   handle(IpcChannel.PlayerGetState, noArgs, () => deps.player.getState())
+  handle(IpcChannel.PlayerSetArea, z.tuple([playerAreaSchema]), ([area]) =>
+    deps.player.setArea(area),
+  )
   handle(IpcChannel.PlayerCommand, z.tuple([playerCommandSchema]), ([command]) =>
     deps.player.command(command),
   )
