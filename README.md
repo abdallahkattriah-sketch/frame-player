@@ -104,6 +104,12 @@ See [docs/BUILDING.md](docs/BUILDING.md).
 [Subtitle providers](docs/SUBTITLE_PROVIDERS.md) ·
 [Troubleshooting](docs/TROUBLESHOOTING.md) · [Security](docs/SECURITY.md)
 
+## Contributing
+
+Bug reports and pull requests are welcome. Before opening a pull request, please read
+[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) and make sure `npm run typecheck`, `npm run lint`
+and `npm test` pass.
+
 ## License
 
 Frame's code is MIT-licensed ([LICENSE](LICENSE)). It ships mpv as a separate program under
